@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fazenda Digital | Monitoramento</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; color: #17251b; background: #f4f7f3; }
+      body { margin: 0; }
+      header { background: #173f2a; color: white; padding: 18px 5vw; }
+      main { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+      section, .card { background: white; border: 1px solid #dce6dc; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+      .card strong { font-size: 1.8rem; display: block; }
+      label { display: block; margin: 10px 0 4px; }
+      input { padding: 9px; border: 1px solid #aab9ab; border-radius: 6px; max-width: 220px; }
+      button { background: #17633b; color: white; border: 0; border-radius: 7px; padding: 10px 14px; margin: 12px 8px 0 0; cursor: pointer; }
+      button.secondary { background: #536357; }
+      button.danger { background: #a13e31; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { text-align: left; padding: 9px; border-bottom: 1px solid #e1e8e1; font-size: .9rem; }
+      .muted { color: #59665c; }
+      .siren { background: #fee5e1; border-left: 5px solid #b53125; padding: 12px; }
+    </style>
+  </head>
+  <body>
+    <header><b>Fazenda Digital</b> · Monitoramento do corredor</header>
+    <main>
+      <div id="banner" hidden></div>
+      <div class="grid">
+        <div class="card">Câmera<strong id="camera">—</strong><span id="frame" class="muted">Sem quadro</span></div>
+        <div class="card">Entradas<strong id="in">0</strong></div>
+        <div class="card">Saídas<strong id="out">0</strong></div>
+        <div class="card">Divergência da sessão<strong id="diff">—</strong></div>
+      </div>
+      <section>
+        <h2>Sessão de manejo</h2>
+        <label for="expected">Passagens esperadas</label>
+        <input id="expected" type="number" min="0" value="0" />
+        <label>Horário permitido</label>
+        <input id="from" type="time" value="00:00" /> até
+        <input id="until" type="time" value="23:59" />
+        <label for="tolerance">Tolerância</label>
+        <input id="tolerance" type="number" min="0" value="0" />
+        <br />
+        <button onclick="startSession()">Iniciar sessão</button>
+        <button class="secondary" onclick="stopSession()">Encerrar e comparar</button>
+        <button class="danger" onclick="silence()">Silenciar sirene</button>
+        <p id="session" class="muted">Nenhuma sessão ativa</p>
+        <p class="muted">A sirene está em modo simulado nesta versão.</p>
+      </section>
+      <section>
+        <h2>Eventos recentes</h2>
+        <table>
+          <thead><tr><th>Horário</th><th>Evento</th><th>Direção</th><th>Confiança</th><th>Evidência</th><th>Ação</th></tr></thead>
+          <tbody id="events"></tbody>
+        </table>
+      </section>
+      <p class="muted">Os dados ficam no gateway. A sincronização ERP ocorre somente quando configurada.</p>
+    </main>
+    <script>
+      const labels = { passage: 'Passagem', after_hours: 'Fora do horário', count_mismatch: 'Divergência' };
+      async function api(path, method = 'GET', body) {
+        const response = await fetch(path, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: response.statusText }));
+          throw Error(error.detail || response.statusText);
+        }
+        return response.json();
+      }
+      function cell(text) {
+        const element = document.createElement('td');
+        element.textContent = text;
+        return element;
+      }
+      async function refresh() {
+        try {
+          const status = await api('/api/status');
+          document.getElementById('camera').textContent = status.camera_state;
+          document.getElementById('frame').textContent = status.last_frame_at
+            ? 'Último quadro: ' + new Date(status.last_frame_at).toLocaleTimeString()
+            : 'Sem quadro recebido';
+          document.getElementById('in').textContent = status.session?.in_count ?? 0;
+          document.getElementById('out').textContent = status.session?.out_count ?? 0;
+          document.getElementById('diff').textContent = status.session
+            ? `${status.session.total_count - status.session.expected_passages} (${status.session.total_count}/${status.session.expected_passages})`
+            : '—';
+          document.getElementById('session').textContent = status.session
+            ? (status.session.active ? 'Sessão ativa · ' : 'Última sessão encerrada · ') + status.session.session_id
+            : 'Nenhuma sessão ativa';
+
+          const banner = document.getElementById('banner');
+          banner.replaceChildren();
+          banner.hidden = !status.siren.active;
+          if (status.siren.active) {
+            banner.className = 'siren';
+            banner.textContent = 'Alerta local ativo: ' + status.siren.reason + ' · duração máxima simulada 30 s';
+          }
+
+          const events = await api('/api/events?limit=50');
+          const body = document.getElementById('events');
+          body.replaceChildren();
+          for (const event of events) {
+            const row = document.createElement('tr');
+            [
+              new Date(event.occurred_at).toLocaleString(),
+              labels[event.event_type] || event.event_type,
+              event.direction || '—',
+              event.confidence == null ? '—' : (event.confidence * 100).toFixed(1) + '%',
+            ].forEach((value) => row.append(cell(value)));
+            const evidenceCell = cell('');
+            if (event.details?.evidence_ref) {
+              const link = document.createElement('a');
+              link.href = '/api/evidence/' + encodeURIComponent(event.event_id);
+              link.textContent = 'Abrir imagem';
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              evidenceCell.append(link);
+            }
+            row.append(evidenceCell);
+            const action = cell('');
+            if (!event.acknowledged) {
+              const button = document.createElement('button');
+              button.textContent = 'Revisar';
+              button.onclick = async () => {
+                await api('/api/events/' + encodeURIComponent(event.event_id) + '/ack', 'POST');
+                refresh();
+              };
+              action.append(button);
+            }
+            row.append(action);
+            body.append(row);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      async function startSession() {
+        try {
+          await api('/api/sessions', 'POST', {
+            expected_passages: +document.getElementById('expected').value,
+            allowed_from: document.getElementById('from').value,
+            allowed_until: document.getElementById('until').value,
+            tolerance: +document.getElementById('tolerance').value,
+          });
+          refresh();
+        } catch (error) { alert(error.message); }
+      }
+      async function stopSession() {
+        try { await api('/api/sessions/stop', 'POST'); refresh(); }
+        catch (error) { alert(error.message); }
+      }
+      async function silence() {
+        try { await api('/api/siren/silence', 'POST'); refresh(); }
+        catch (error) { alert(error.message); }
+      }
+      setInterval(refresh, 2000);
+      refresh();
+    </script>
+  </body>
+</html>
