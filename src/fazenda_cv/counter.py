@@ -2,20 +2,17 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fazenda_cv.domain import (
-    CountLine,
-    Direction,
-    EventType,
-    MonitorEvent,
-    MonitoringSession,
-    Track,
-)
+from fazenda_cv.domain import CountLine, Direction, PassageEvent, Track
 
 
 class PassageCounter:
+    """Emits a passage when a tracked object's center changes sides of the line."""
+
     def __init__(self, line: CountLine | None = None, debounce_seconds: float = 1.5) -> None:
         self.line = line or CountLine()
         self.debounce_seconds = debounce_seconds
+        self.in_count = 0
+        self.out_count = 0
         self._last_side: dict[int, int] = {}
         self._last_crossing: dict[int, datetime] = {}
 
@@ -28,15 +25,13 @@ class PassageCounter:
         self,
         tracks: list[Track],
         frame_size: tuple[int, int],
-        session: MonitoringSession,
-        farm_id: str,
-        camera_id: str,
-        model_version: str,
+        source_id: str,
+        detector_version: str,
         moment: datetime | None = None,
-    ) -> list[MonitorEvent]:
+    ) -> list[PassageEvent]:
         now = moment or datetime.now(UTC)
         width, height = frame_size
-        events: list[MonitorEvent] = []
+        events: list[PassageEvent] = []
         for track in tracks:
             signed = self.line.side(track.center, width, height)
             side = 1 if signed >= 0 else -1
@@ -50,34 +45,17 @@ class PassageCounter:
             self._last_crossing[track.track_id] = now
             direction = Direction.IN if old_side < side else Direction.OUT
             if direction is Direction.IN:
-                session.in_count += 1
+                self.in_count += 1
             else:
-                session.out_count += 1
+                self.out_count += 1
             events.append(
-                MonitorEvent(
-                    event_type=EventType.PASSAGE,
-                    farm_id=farm_id,
-                    camera_id=camera_id,
-                    session_id=session.session_id,
-                    occurred_at=now,
+                PassageEvent(
+                    source_id=source_id,
                     direction=direction,
+                    occurred_at=now,
                     confidence=track.confidence,
-                    model_version=model_version,
-                    details={"track_id": track.track_id},
+                    detector_version=detector_version,
+                    track_id=track.track_id,
                 )
             )
-            if not session.is_allowed_time(now):
-                events.append(
-                    MonitorEvent(
-                        event_type=EventType.AFTER_HOURS,
-                        farm_id=farm_id,
-                        camera_id=camera_id,
-                        session_id=session.session_id,
-                        occurred_at=now,
-                        direction=direction,
-                        confidence=track.confidence,
-                        model_version=model_version,
-                        details={"track_id": track.track_id, "alert": True},
-                    )
-                )
         return events

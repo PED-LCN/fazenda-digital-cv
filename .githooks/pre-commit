@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+if [ ! -x .venv/bin/pytest ] || [ ! -x .venv/bin/ruff ]; then
+  echo 'Configure o ambiente .venv conforme o README antes de criar commits.' >&2
+  exit 1
+fi
+.venv/bin/ruff check .
+.venv/bin/ruff format --check .
+.venv/bin/pytest -q

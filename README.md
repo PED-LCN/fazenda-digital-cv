@@ -1,54 +1,76 @@
-# Fazenda Digital - monitor de passagens
+# Fazenda Digital — ferramenta local de visão computacional
 
-Protótipo local para contar bovinos em um corredor de manejo a partir de vídeo, abrir alertas de horário/divergência e conservar os eventos enquanto a conexão estiver indisponível. Ainda não é uma validação zootécnica nem um modelo treinado para a fazenda.
+Este módulo recebe quadros de uma janela Godot, arquivo de vídeo ou câmera RTSP, detecta objetos, acompanha trajetórias e emite **somente eventos de passagem**. Ele não inicia servidor nem oferece página web. Outro sistema pode consumir os eventos JSON do `stdout`, ler um arquivo JSONL ou chamar `CvPipeline.process()` em Python.
 
-## Requisitos
+```
+janela Godot / vídeo / RTSP → detector substituível → rastreador → linha → eventos JSON
+                                                              ↘ vídeo anotado opcional
+```
 
-- Linux x86_64 ou ARM64, Python 3.12, FFmpeg e uma câmera RTSP ou arquivo de vídeo.
-- Para começar sem câmera, `--demo` gera uma cena sintética contínua com objetos verdes. Esse modo testa a tubulação, não detecta bovinos reais.
-- Para inferência, forneça um modelo ONNX YOLOX com saída padrão `[1, anchors, 5 + classes]`, classes COCO ou modelo próprio com mapa documentado. Os pesos não entram no Git.
+## Preparar o ambiente
 
-## Instalação e execução
+Requer Python 3.12. Para a demonstração Godot em Linux, também requer FFmpeg, `xprop` e uma sessão X11 ou XWayland. `ffplay` é opcional para prévia ao vivo.
 
 ```bash
+cd /home/PedLcn/Documentos/PIEC2/cv-monitoring
 python3.12 -m venv .venv
-. .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e '.[dev]'
-fazenda-cv --source ./caminho/video.mp4 --model ./models/bovinos.onnx
+.venv/bin/python -m pip install -r requirements.lock
+.venv/bin/python -m pip install --no-deps -e .
 ```
 
-Sem modelo, `--demo` identifica marcadores verdes em vídeo ou gera uma cena sintética se não houver `--source`:
+O ambiente `.venv` desta pasta já está preparado. Neste computador, se `python3.12` não estiver no `PATH`, o executável usado para recriá-lo está em `/home/PedLcn/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3.12`.
+
+O perfil travado inclui ONNX Runtime e ferramentas de teste. Uma instalação apenas do núcleo pode usar `pip install -e .`; para inferência real, `pip install -e '.[onnx]'`.
+
+## Demonstração com o executável fornecido
 
 ```bash
-fazenda-cv --demo
+.venv/bin/fazenda-cv \
+  --godot ../ttttttttttttttttttttttttttttttttttttttttttt.x86_64 \
+  --simulator --preview \
+  --events artifacts/passagens.jsonl \
+  --annotated artifacts/apresentacao.avi
 ```
 
-Sem `--source`, a API sobe em estado ocioso e pode receber quadros por uma integração futura. Abra `http://127.0.0.1:8000`. O painel usa SQLite em `./data/fazenda-cv.sqlite3`.
+O comando abre o Godot e captura **somente a janela do simulador**. No jogo, use **Spawn Vacas**, **Porteira** e **Passar Porteira** para produzir movimento. O terminal mostra objetos visíveis, entradas e saídas; `--preview` mostra as caixas e a linha em tempo real, e o AVI pode ser reproduzido após encerrar com `Ctrl+C`. O modo simulador reconhece o corpo cinza das vacas dessa cena por cor; não usa esse critério em vídeo de fazenda. A linha padrão para esta simulação fica em `x=0,38`, perto da passagem observada. Ajuste com `--line X1 Y1 X2 Y2` se mudar o enquadramento.
 
-Para disponibilizar o painel na rede local, defina `FARM_CV_HOST=0.0.0.0`, `FARM_CV_USERNAME` e `FARM_CV_PASSWORD` com valores próprios. A aplicação recusa exposição na rede sem credenciais. Para uma instalação real, use TLS no gateway/proxy e restrinja o acesso à rede do curral.
+Se a captura da janela não estiver disponível no computador de apresentação, grave o executável com o recurso `--write-movie` do Godot e processe o AVI com `--source arquivo.avi --simulator`. A gravação requer interação com o jogo e driver gráfico funcional. [Godot: gravação de filmes](https://docs.godotengine.org/en/4.7/tutorials/animation/creating_movies.html), [FFmpeg: captura de janela X11](https://www.ffmpeg.org/ffmpeg-devices.html#x11grab).
 
-Variáveis opcionais: `FARM_CV_DATABASE`, `FARM_CV_DATA_DIR`, `FARM_CV_EVIDENCE_RETENTION_DAYS` (padrão 7), `FARM_CV_ERP_EVENTS_URL`, `FARM_CV_ERP_TOKEN`, `FARM_CV_MODEL`, `FARM_CV_CATTLE_CLASS_ID`, `FARM_CV_CAMERA_SOURCE`, `FARM_CV_FARM_ID`, `FARM_CV_CAMERA_ID`, `FARM_CV_TIMEZONE` (padrão `America/Sao_Paulo`), `FARM_CV_LINE_START_X/Y`, `FARM_CV_LINE_END_X/Y` (coordenadas de 0 a 1; esquerda para direita é entrada), `FARM_CV_HOST`, `FARM_CV_PORT`, `FARM_CV_USERNAME`, `FARM_CV_PASSWORD`.
-
-## Sessão de manejo e eventos
-
-Cada sessão recebe a quantidade esperada de passagens, o horário permitido e uma linha de contagem normalizada. Os eventos de entrada e saída são mantidos separadamente. Ao encerrar a sessão, a contagem total é comparada à quantidade esperada; eventos fora do horário e divergências geram alerta local. O SQLite conserva sessão e eventos após reinício. Uma imagem JPEG por evento é retida localmente por sete dias (configurável); não há gravação contínua. O adaptador atual da sirene é simulado: equipamento físico só deve ser ligado depois de definir relé, alimentação e limites de acionamento.
-
-O evento JSON tem `schema_version`, `event_id`, `farm_id`, `camera_id`, `session_id`, `event_type`, `direction`, `occurred_at`, `confidence`, `model_version` e `details`. O envio opcional ao ERP usa HTTPS e `Idempotency-Key`; eventos só saem da fila depois de resposta 2xx. O endpoint deve tratar a chave de forma idempotente.
-
-## Limites conhecidos
-
-- O adaptador ONNX implementa a saída YOLOX padrão; outros formatos exigem outro adaptador.
-- Pesos e classes precisam ser validados e licenciados individualmente. Nenhum modelo vem embutido.
-- O modo `--demo` não é ground truth nem evidência de desempenho em curral.
-- RTSP, sirene física, clipes de evidência, reconexão da câmera e sincronização ERP precisam de homologação com os equipamentos/endpoint reais.
-- O binário Godot entregue não inclui o projeto-fonte acessível, então sua simulação ainda não foi integrada.
-
-## Desenvolvimento
+## Trocar pela câmera real
 
 ```bash
-pytest
-ruff check .
+.venv/bin/fazenda-cv \
+  --source 'rtsp://usuario:senha@camera/stream' \
+  --model ./models/bovinos.onnx \
+  --source-id corredor-1 \
+  --line 0.5 1 0.5 0 \
+  --events artifacts/passagens-reais.jsonl
 ```
 
-Use commits pequenos e mensagens no formato `feat:`, `fix:`, `test:`, `docs:`. Não comite imagens, vídeos, credenciais ou pesos. Antes de adotar um modelo para distribuição, registre licença do código, dos pesos e dos dados de treinamento.
+A fonte muda sem alterar o rastreamento, a contagem ou o contrato de eventos. O detector real espera um modelo **YOLOX ONNX com saída bruta** e classe bovino 19 no mapa COCO por padrão; `--class-id` e `--input-size` permitem ajustar outro modelo compatível. O pré-processamento segue a [demonstração oficial de YOLOX para ONNX Runtime](https://github.com/Megvii-BaseDetection/YOLOX/blob/main/demo/ONNXRuntime/onnx_inference.py). Nenhum peso está incluído. O identificador do detector registra parte do SHA-256 dos pesos usados. Antes da distribuição, registre também origem e licença dos pesos e dos dados. Trocar a entrada pela câmera não comprova a qualidade das detecções: serão necessários pesos licenciados, ajuste da linha, vídeo real anotado e medição em campo.
+
+Para hardware mais limitado, comece com `--fps 5 --width 640 --height 360` na captura da janela e `--max-width 640` em vídeo ou RTSP; compare perda de passagens e latência antes de reduzir ainda mais. A prévia e a gravação anotada são opcionais.
+
+## Contrato de saída
+
+Cada linha do `stdout` ou de `--events` é um objeto JSON independente:
+
+```json
+{"source_id":"corredor-1","direction":"out","occurred_at":"2026-10-21T03:18:02+00:00","confidence":1.0,"detector_version":"simulator-gray-cow-1","track_id":1,"event_id":"b57cfc99-af30-4174-97ac-5aef92f9365a","schema_version":1}
+```
+
+`event_id` permite deduplicação pelo consumidor. `occurred_at` está em UTC. Em vídeo gravado, o intervalo entre quadros segue o FPS do arquivo, ancorado ao instante do replay. A confiança `1.0` do detector da simulação representa uma regra de cor, não uma probabilidade calibrada. A integração externa fica responsável por sessões, total esperado, alertas, armazenamento e ERP.
+
+## Validação e limites
+
+```bash
+.venv/bin/ruff check .
+.venv/bin/ruff format --check .
+.venv/bin/pytest -q
+```
+
+Um hook Git executa esses comandos antes de cada commit e o fluxo de CI repete os testes. Vídeos, modelos, eventos locais e credenciais ficam fora do Git.
+
+Os testes cobrem detecção da cena simulada, contagem nos dois sentidos, reprodução de AVI até JSON e vídeo anotado, e formato de entrada do adaptador YOLOX. Neste ambiente, a captura da janela Godot foi verificada com curral vazio (80 quadros, zero contagens) e com duas vacas visíveis; uma reprodução com a porteira produziu uma passagem. Isso demonstra a integração, não precisão em fazenda. Sobreposição de animais, mudança de ângulo e câmera RTSP ainda exigem avaliação com dados reais.
+
+O procedimento e as métricas para essa avaliação estão em [docs/VALIDACAO.md](docs/VALIDACAO.md).

@@ -1,3 +1,3 @@
-"""Local-first cattle passage monitoring."""
+"""Local computer vision pipeline for cattle passage monitoring."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
