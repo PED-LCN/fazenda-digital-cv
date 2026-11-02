@@ -12,13 +12,11 @@ janela Godot / vídeo / RTSP → detector substituível → rastreador → linha
 Requer Python 3.12. Para a demonstração Godot em Linux, também requer FFmpeg, `xprop` e uma sessão X11 ou XWayland. `ffplay` é opcional para prévia ao vivo.
 
 ```bash
-cd /home/PedLcn/Documentos/PIEC2/cv-monitoring
+cd cv-monitoring
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock
 .venv/bin/python -m pip install --no-deps -e .
 ```
-
-O ambiente `.venv` desta pasta já está preparado. Neste computador, se `python3.12` não estiver no `PATH`, o executável usado para recriá-lo está em `/home/PedLcn/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3.12`.
 
 O perfil travado inclui ONNX Runtime e ferramentas de teste. Uma instalação apenas do núcleo pode usar `pip install -e .`; para inferência real, `pip install -e '.[onnx]'`.
 
@@ -34,13 +32,15 @@ O perfil travado inclui ONNX Runtime e ferramentas de teste. Uma instalação ap
 
 O comando abre o Godot e captura **somente a janela do simulador**. No jogo, use **Spawn Vacas**, **Porteira** e **Passar Porteira** para produzir movimento. O terminal mostra objetos visíveis, entradas e saídas; `--preview` mostra as caixas e a linha em tempo real, e o AVI pode ser reproduzido após encerrar com `Ctrl+C`. O modo simulador reconhece o corpo cinza das vacas dessa cena por cor; não usa esse critério em vídeo de fazenda. A linha padrão para esta simulação fica em `x=0,38`, perto da passagem observada. Ajuste com `--line X1 Y1 X2 Y2` se mudar o enquadramento.
 
+O exemplo supõe que o executável esteja na pasta ao lado do repositório. Em outro computador, informe seu caminho em `--godot`.
+
 Se a captura da janela não estiver disponível no computador de apresentação, grave o executável com o recurso `--write-movie` do Godot e processe o AVI com `--source arquivo.avi --simulator`. A gravação requer interação com o jogo e driver gráfico funcional. [Godot: gravação de filmes](https://docs.godotengine.org/en/4.7/tutorials/animation/creating_movies.html), [FFmpeg: captura de janela X11](https://www.ffmpeg.org/ffmpeg-devices.html#x11grab).
 
 ## Trocar pela câmera real
 
 ```bash
 .venv/bin/fazenda-cv \
-  --source 'rtsp://usuario:senha@camera/stream' \
+  --source 'rtsp://camera/stream' \
   --model ./models/bovinos.onnx \
   --source-id corredor-1 \
   --line 0.5 1 0.5 0 \
