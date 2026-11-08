@@ -30,9 +30,18 @@ O perfil travado inclui ONNX Runtime e ferramentas de teste. Uma instalação ap
   --annotated artifacts/apresentacao.avi
 ```
 
-O comando abre o Godot e captura **somente a janela do simulador**. No jogo, use **Spawn Vacas**, **Porteira** e **Passar Porteira** para produzir movimento. O terminal mostra objetos visíveis, entradas e saídas; `--preview` mostra as caixas e a linha em tempo real, e o AVI pode ser reproduzido após encerrar com `Ctrl+C`. O modo simulador reconhece o corpo cinza das vacas dessa cena por cor; não usa esse critério em vídeo de fazenda. A linha padrão para esta simulação fica em `x=0,38`, perto da passagem observada. Ajuste com `--line X1 Y1 X2 Y2` se mudar o enquadramento.
+O comando abre o Godot e captura **somente a janela do simulador**. No jogo, use **Spawn Vacas**, **Porteira** e **Passar Porteira** para produzir movimento. O terminal mostra objetos visíveis, entradas e saídas; `--preview` mostra as caixas e a linha em tempo real, e o AVI pode ser reproduzido após encerrar com `Ctrl+C`. O modo simulador reconhece o corpo cinza das vacas dessa cena por cor; não usa esse critério em vídeo de fazenda. A linha padrão fica sobre a abertura da porteira observada no vídeo (`--line 0.34 0.32 0.34 0.13`). Ajuste os quatro valores normalizados com `--line X1 Y1 X2 Y2` se mudar o enquadramento.
 
 O exemplo supõe que o executável esteja na pasta ao lado do repositório. Em outro computador, informe seu caminho em `--godot`.
+
+Para desenhar a linha sobre a porteira, instale a variante gráfica do OpenCV no ambiente virtual e acrescente `--draw-line` ao comando acima:
+
+```bash
+.venv/bin/python -m pip uninstall -y opencv-python-headless
+.venv/bin/python -m pip install 'opencv-python>=4.10,<5'
+```
+
+No primeiro quadro, arraste o mouse do início ao fim da linha e pressione Enter. Esc cancela. O terminal imprime os quatro valores de `--line` para reutilização. A calibração pausa o processamento até a confirmação. A captura da janela solicita 30 FPS por padrão; para ajudar o computador a acompanhar, experimente `--width 640 --height 360 --max-width 640` e retire `--annotated` se não precisar gravar. O terminal mostra a taxa efetiva de processamento. Reduzir a resolução pode fazer perder vacas pequenas, então confira a contagem com o vídeo apresentado.
 
 Se a captura da janela não estiver disponível no computador de apresentação, grave o executável com o recurso `--write-movie` do Godot e processe o AVI com `--source arquivo.avi --simulator`. A gravação requer interação com o jogo e driver gráfico funcional. [Godot: gravação de filmes](https://docs.godotengine.org/en/4.7/tutorials/animation/creating_movies.html), [FFmpeg: captura de janela X11](https://www.ffmpeg.org/ffmpeg-devices.html#x11grab).
 

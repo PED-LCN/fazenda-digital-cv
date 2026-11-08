@@ -52,7 +52,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--class-id", type=int, default=19, help="Classe bovino no modelo ONNX")
     parser.add_argument("--input-size", type=int, default=416)
-    parser.add_argument("--fps", type=int, default=10, help="FPS da captura de janela")
+    parser.add_argument(
+        "--fps", type=int, default=30, help="FPS solicitado na captura de janela (padrão: 30)"
+    )
     parser.add_argument(
         "--width", type=int, default=960, help="Largura processada na captura de janela"
     )
@@ -71,6 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--preview", action="store_true", help="Mostra vídeo anotado no ffplay se disponível"
+    )
+    parser.add_argument(
+        "--draw-line",
+        action="store_true",
+        help="Desenha a linha no primeiro quadro com o mouse (requer OpenCV com GUI)",
     )
     parser.add_argument(
         "--max-frames", type=int, default=0, help="Limita quadros para demonstração/teste"
@@ -112,6 +119,46 @@ def _open_preview(width: int, height: int, fps: int) -> subprocess.Popen[bytes]:
     )
 
 
+def _draw_line(frame: cv2.typing.MatLike) -> CountLine:
+    if "GUI:                           NONE" in cv2.getBuildInformation():
+        raise RuntimeError("--draw-line requer OpenCV com GUI; instale opencv-python no ambiente")
+    window = "Fazenda CV - arraste a linha; Enter confirma; Esc cancela"
+    points: list[tuple[int, int]] = []
+    dragging = False
+
+    def mouse(event: int, x: int, y: int, _flags: int, _param: object) -> None:
+        nonlocal dragging
+        if event == cv2.EVENT_LBUTTONDOWN:
+            points[:] = [(x, y), (x, y)]
+            dragging = True
+        elif event == cv2.EVENT_MOUSEMOVE and dragging:
+            points[1] = (x, y)
+        elif event == cv2.EVENT_LBUTTONUP and dragging:
+            points[1] = (x, y)
+            dragging = False
+
+    try:
+        cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+        cv2.setMouseCallback(window, mouse)
+        while True:
+            image = frame.copy()
+            if len(points) == 2:
+                cv2.line(image, points[0], points[1], (0, 220, 255), 2)
+            cv2.imshow(window, image)
+            key = cv2.waitKey(30) & 0xFF
+            if key in (10, 13) and len(points) == 2 and points[0] != points[1]:
+                break
+            if key == 27:
+                raise RuntimeError("Desenho da linha cancelado")
+    finally:
+        cv2.destroyWindow(window)
+    height, width = frame.shape[:2]
+    return CountLine(
+        (points[0][0] / width, points[0][1] / height),
+        (points[1][0] / width, points[1][1] / height),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -124,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.model and not Path(args.model).is_file():
         parser.error("O modelo ONNX informado não existe")
 
-    coordinates = args.line or ((0.38, 1, 0.38, 0) if args.simulator else (0.5, 1, 0.5, 0))
+    coordinates = args.line or ((0.34, 0.32, 0.34, 0.13) if args.simulator else (0.5, 1, 0.5, 0))
     line = CountLine((coordinates[0], coordinates[1]), (coordinates[2], coordinates[3]))
     detector = (
         SimulatorCowDetector(tuple(args.roi))
@@ -163,6 +210,16 @@ def main(argv: list[str] | None = None) -> int:
             if args.max_width and frame.shape[1] > args.max_width:
                 new_height = round(frame.shape[0] * args.max_width / frame.shape[1])
                 frame = cv2.resize(frame, (args.max_width, new_height))
+            if args.draw_line:
+                line = _draw_line(frame)
+                pipeline = CvPipeline(detector, args.source_id, line)
+                started = time.monotonic()
+                print(
+                    f"Linha escolhida: --line {line.start[0]:.4f} {line.start[1]:.4f} "
+                    f"{line.end[0]:.4f} {line.end[1]:.4f}",
+                    file=sys.stderr,
+                )
+                args.draw_line = False
             result = pipeline.process(frame, sample.occurred_at)
             frames += 1
             for event in result.events:
