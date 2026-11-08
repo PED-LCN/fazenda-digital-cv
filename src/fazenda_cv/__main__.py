@@ -6,9 +6,11 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
@@ -119,12 +121,13 @@ def _open_preview(width: int, height: int, fps: int) -> subprocess.Popen[bytes]:
     )
 
 
-def _draw_line(frame: cv2.typing.MatLike) -> CountLine:
+def _draw_line(frame: np.ndarray, samples: Iterator) -> tuple[CountLine, np.ndarray]:
     if "GUI:                           NONE" in cv2.getBuildInformation():
         raise RuntimeError("--draw-line requer OpenCV com GUI; instale opencv-python no ambiente")
     window = "Fazenda CV - arraste a linha; Enter confirma; Esc cancela"
     points: list[tuple[int, int]] = []
     dragging = False
+    display_size = (frame.shape[1], frame.shape[0])
 
     def mouse(event: int, x: int, y: int, _flags: int, _param: object) -> None:
         nonlocal dragging
@@ -141,6 +144,12 @@ def _draw_line(frame: cv2.typing.MatLike) -> CountLine:
         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
         cv2.setMouseCallback(window, mouse)
         while True:
+            sample = next(samples, None)
+            if sample is None:
+                raise RuntimeError("Fonte de vídeo encerrada durante o desenho da linha")
+            frame = sample.image
+            if (frame.shape[1], frame.shape[0]) != display_size:
+                frame = cv2.resize(frame, display_size)
             image = frame.copy()
             if len(points) == 2:
                 cv2.line(image, points[0], points[1], (0, 220, 255), 2)
@@ -153,10 +162,11 @@ def _draw_line(frame: cv2.typing.MatLike) -> CountLine:
     finally:
         cv2.destroyWindow(window)
     height, width = frame.shape[:2]
-    return CountLine(
+    line = CountLine(
         (points[0][0] / width, points[0][1] / height),
         (points[1][0] / width, points[1][1] / height),
     )
+    return line, frame
 
 
 def _gui_available() -> bool:
@@ -237,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
                 if key != ord("l"):
                     continue
                 cv2.destroyWindow("Fazenda CV - aguardando calibracao")
-                line = _draw_line(frame)
+                line, frame = _draw_line(frame, frame_stream)
                 pipeline = CvPipeline(detector, args.source_id, line)
                 started = time.monotonic()
                 print(
