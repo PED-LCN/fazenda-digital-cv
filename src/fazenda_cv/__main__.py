@@ -159,9 +159,18 @@ def _draw_line(frame: cv2.typing.MatLike) -> CountLine:
     )
 
 
+def _gui_available() -> bool:
+    return not any(
+        line.strip().startswith("GUI:") and "NONE" in line
+        for line in cv2.getBuildInformation().splitlines()
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.draw_line and not _gui_available():
+        parser.error("--draw-line requer OpenCV com GUI; instale opencv-python")
     if args.fps < 1 or args.width < 16 or args.height < 16 or args.max_width < 0:
         parser.error("fps, largura e altura devem ser positivos")
     if args.max_frames < 0:
@@ -211,6 +220,23 @@ def main(argv: list[str] | None = None) -> int:
                 new_height = round(frame.shape[0] * args.max_width / frame.shape[1])
                 frame = cv2.resize(frame, (args.max_width, new_height))
             if args.draw_line:
+                image = frame.copy()
+                cv2.putText(
+                    image,
+                    "Pressione L para desenhar; Q para sair",
+                    (12, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (255, 255, 255),
+                    2,
+                )
+                cv2.imshow("Fazenda CV - aguardando calibracao", image)
+                key = cv2.waitKey(1) & 0xFF
+                if key in (ord("q"), 27):
+                    break
+                if key != ord("l"):
+                    continue
+                cv2.destroyWindow("Fazenda CV - aguardando calibracao")
                 line = _draw_line(frame)
                 pipeline = CvPipeline(detector, args.source_id, line)
                 started = time.monotonic()
@@ -263,6 +289,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if frame_stream is not None:
             frame_stream.close()
+        if _gui_available():
+            cv2.destroyAllWindows()
         if writer:
             writer.release()
         if preview:
