@@ -72,6 +72,8 @@ Cada linha do `stdout` ou de `--events` é um objeto JSON independente:
 
 Em gravações, os eventos também incluem `session_id`, `video_offset_ms` e `time_basis: "replay"`. O deslocamento em milissegundos localiza o quadro no arquivo independentemente de quando ele é reproduzido; `occurred_at` continua indicando o horário do replay, não o horário original de captura. Em RTSP, `time_basis` é ao vivo e não há deslocamento no arquivo.
 
+O [contrato candidato v2](docs/CONTRATO_EVENTOS_V2.md) distingue passagens, ocupação e alertas para a futura integração; ele ainda depende de revisão pelo sistema consumidor.
+
 ## Validação e limites
 
 ```bash
