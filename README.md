@@ -87,3 +87,5 @@ O procedimento e as métricas para essa avaliação estão em [docs/VALIDACAO.md
 As duas frentes planejadas para gravações reais, o protocolo de dados e as dependências de implementação estão em [docs/PREPARACAO_GRAVACOES_REAIS.md](docs/PREPARACAO_GRAVACOES_REAIS.md).
 
 As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_GRAVACOES_REAIS.md](docs/BACKLOG_GRAVACOES_REAIS.md).
+
+O registro de pesos candidatos e a medição de caixas estão em [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).

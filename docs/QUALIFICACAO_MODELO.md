@@ -1,0 +1,17 @@
+# Qualificação de pesos para vídeo real
+
+O adaptador atual recebe saída bruta YOLOX em ONNX. O [repositório oficial do YOLOX](https://github.com/Megvii-BaseDetection/YOLOX) publica código e artefatos; sua [licença de código](https://github.com/Megvii-BaseDetection/YOLOX/blob/main/LICENSE) é Apache-2.0. Confirme separadamente a licença e a origem dos pesos específicos escolhidos. A classe `cow` em COCO é um ponto de partida, não prova de desempenho no curral.
+
+Registre um model card TOML junto dos pesos locais (fora do Git):
+
+```toml
+path = "weights.onnx"
+source_url = "https://example.org/model"
+license = "verificar licença dos pesos"
+sha256 = "substituir pelo hash SHA-256 de 64 caracteres"
+input_size = 416
+cattle_class_id = 19
+class_names = ["preencher mapa completo das classes"]
+```
+
+O exemplo acima é ilustrativo e não passa na validação até ser preenchido com o mapa completo e o hash real. `load_model_card` verifica procedência declarada, dimensões, índice da classe e SHA-256. Execute o detector com vídeo ou fotos rotuladas do conjunto de avaliação e use `score_frame` para acumular verdadeiros positivos, falsos positivos e falsos negativos por quadro com IoU predefinida. Documente limiar de confiança, resolução, FPS, CPU e memória. Se os pesos exigirem formato diferente da saída bruta YOLOX, abra uma issue de adaptador antes de alegar compatibilidade. Não declare a meta de contagem atingida a partir de métricas de detecção.
