@@ -59,6 +59,9 @@ class PassageEvent:
     confidence: float
     detector_version: str
     track_id: int
+    session_id: str | None = None
+    video_offset_ms: int | None = None
+    time_basis: str = "live"
     event_id: str = field(default_factory=lambda: str(uuid4()))
     schema_version: int = 1
 
@@ -66,4 +69,10 @@ class PassageEvent:
         result = asdict(self)
         result["direction"] = self.direction.value
         result["occurred_at"] = self.occurred_at.astimezone(UTC).isoformat()
+        if self.session_id is None:
+            result.pop("session_id")
+        if self.video_offset_ms is None:
+            result.pop("video_offset_ms")
+        if self.time_basis == "live":
+            result.pop("time_basis")
         return result

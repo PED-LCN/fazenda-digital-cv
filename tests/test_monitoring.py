@@ -79,6 +79,9 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     assert exit_code == 0
     payloads = [json.loads(row) for row in events_file.read_text().splitlines()]
     assert [row["direction"] for row in payloads] == ["in"]
+    assert payloads[0]["time_basis"] == "replay"
+    assert payloads[0]["video_offset_ms"] == 400
+    assert payloads[0]["session_id"]
     assert annotated.is_file()
     output = cv2.VideoCapture(str(annotated))
     assert output.get(cv2.CAP_PROP_FRAME_COUNT) == 10

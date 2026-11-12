@@ -28,6 +28,9 @@ class PassageCounter:
         source_id: str,
         detector_version: str,
         moment: datetime | None = None,
+        session_id: str | None = None,
+        video_offset_ms: int | None = None,
+        time_basis: str = "live",
     ) -> list[PassageEvent]:
         now = moment or datetime.now(UTC)
         width, height = frame_size
@@ -56,6 +59,9 @@ class PassageCounter:
                     confidence=track.confidence,
                     detector_version=detector_version,
                     track_id=track.track_id,
+                    session_id=session_id,
+                    video_offset_ms=video_offset_ms,
+                    time_basis=time_basis,
                 )
             )
         return events
