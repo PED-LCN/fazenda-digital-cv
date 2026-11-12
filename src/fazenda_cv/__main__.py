@@ -12,6 +12,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from fazenda_cv.access_config import load_access_configs
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
 from fazenda_cv.pipeline import CvPipeline
@@ -37,6 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
     detector.add_argument("--simulator", action="store_true", help="Detecta vacas cinzas do Godot")
     detector.add_argument("--model", help="Modelo bovino YOLOX em ONNX para vídeo real")
     parser.add_argument("--source-id", default="corredor-1")
+    parser.add_argument("--access-config", type=Path, help="JSON com linhas do curral e ordenha")
+    parser.add_argument("--access-id", choices=("curral", "ordenha"))
     parser.add_argument(
         "--line",
         nargs=4,
@@ -189,9 +192,20 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Use um modelo ONNX para câmera real; --simulator exige cena fixa Godot")
     if args.model and not Path(args.model).is_file():
         parser.error("O modelo ONNX informado não existe")
+    if bool(args.access_config) != bool(args.access_id):
+        parser.error("--access-config e --access-id devem ser usados juntos")
+    if args.access_config and (args.line or args.draw_line):
+        parser.error("Use a linha do acesso configurado, sem --line ou --draw-line")
 
     coordinates = args.line or ((0.34, 0.32, 0.34, 0.13) if args.simulator else (0.5, 1, 0.5, 0))
     line = CountLine((coordinates[0], coordinates[1]), (coordinates[2], coordinates[3]))
+    if args.access_config:
+        try:
+            access = load_access_configs(args.access_config)[args.access_id]
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            parser.error(f"Configuração de acesso inválida: {error}")
+        line = access.line
+        args.source_id = access.source_id
     detector = (
         SimulatorCowDetector(tuple(args.roi))
         if args.simulator

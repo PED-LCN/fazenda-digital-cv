@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from math import hypot
 
 import cv2
 import numpy as np
@@ -58,6 +59,12 @@ class CvPipeline:
         start = (int(self.line.start[0] * width), int(self.line.start[1] * height))
         end = (int(self.line.end[0] * width), int(self.line.end[1] * height))
         cv2.line(image, start, end, (0, 220, 255), 2)
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        length = hypot(dx, dy)
+        midpoint = ((start[0] + end[0]) // 2, (start[1] + end[1]) // 2)
+        if length:
+            tip = (round(midpoint[0] - 22 * dy / length), round(midpoint[1] + 22 * dx / length))
+            cv2.arrowedLine(image, midpoint, tip, (0, 220, 255), 2)
         for detection in result.detections:
             cv2.rectangle(
                 image,
