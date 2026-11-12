@@ -87,3 +87,7 @@ Os testes cobrem detecção da cena simulada, contagem nos dois sentidos, reprod
 O procedimento e as métricas para essa avaliação estão em [docs/VALIDACAO.md](docs/VALIDACAO.md).
 
 A reprodução temporal com um clipe real está registrada em [docs/VALIDACAO_TEMPO_VIDEO.md](docs/VALIDACAO_TEMPO_VIDEO.md).
+
+As duas frentes planejadas para gravações reais, o protocolo de dados e as dependências de implementação estão em [docs/PREPARACAO_GRAVACOES_REAIS.md](docs/PREPARACAO_GRAVACOES_REAIS.md).
+
+As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_GRAVACOES_REAIS.md](docs/BACKLOG_GRAVACOES_REAIS.md).
