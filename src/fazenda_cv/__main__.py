@@ -12,6 +12,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from fazenda_cv.areas import annotate_areas, load_areas
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
 from fazenda_cv.pipeline import CvPipeline
@@ -37,6 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
     detector.add_argument("--simulator", action="store_true", help="Detecta vacas cinzas do Godot")
     detector.add_argument("--model", help="Modelo bovino YOLOX em ONNX para vídeo real")
     parser.add_argument("--source-id", default="corredor-1")
+    parser.add_argument(
+        "--areas-config", type=Path, help="Polígonos de monitoramento para a fonte selecionada"
+    )
     parser.add_argument(
         "--line",
         nargs=4,
@@ -189,6 +193,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Use um modelo ONNX para câmera real; --simulator exige cena fixa Godot")
     if args.model and not Path(args.model).is_file():
         parser.error("O modelo ONNX informado não existe")
+    area = None
+    if args.areas_config:
+        try:
+            area = load_areas(args.areas_config)[args.source_id]
+        except KeyError:
+            parser.error(f"Fonte {args.source_id!r} ausente em --areas-config")
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            parser.error(f"Configuração de áreas inválida: {error}")
 
     coordinates = args.line or ((0.34, 0.32, 0.34, 0.13) if args.simulator else (0.5, 1, 0.5, 0))
     line = CountLine((coordinates[0], coordinates[1]), (coordinates[2], coordinates[3]))
@@ -266,6 +278,8 @@ def main(argv: list[str] | None = None) -> int:
                     event_file.flush()
             if args.annotated or args.preview:
                 image = pipeline.annotate(frame, result)
+                if area is not None:
+                    image = annotate_areas(image, area)
                 height, width = image.shape[:2]
                 if args.annotated:
                     if writer is None:

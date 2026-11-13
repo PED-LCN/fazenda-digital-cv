@@ -87,3 +87,5 @@ O procedimento e as métricas para essa avaliação estão em [docs/VALIDACAO.md
 As duas frentes planejadas para gravações reais, o protocolo de dados e as dependências de implementação estão em [docs/PREPARACAO_GRAVACOES_REAIS.md](docs/PREPARACAO_GRAVACOES_REAIS.md).
 
 As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_GRAVACOES_REAIS.md](docs/BACKLOG_GRAVACOES_REAIS.md).
+
+A calibração opcional dos limites do curral e regiões por câmera está descrita em [docs/AREAS_MONITORAMENTO.md](docs/AREAS_MONITORAMENTO.md).
