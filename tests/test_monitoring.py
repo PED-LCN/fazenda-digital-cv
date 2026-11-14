@@ -54,6 +54,16 @@ def test_pipeline_counts_both_directions_and_serializes_events() -> None:
     assert payload["occurred_at"].endswith("+00:00")
 
 
+def test_detection_only_does_not_emit_passages() -> None:
+    pipeline = CvPipeline(SimulatorCowDetector(min_area=30), "simulador-1", count_passages=False)
+    for position in (34, 42, 50, 58, 66, 74):
+        result = pipeline.process(scene(position))
+        assert result.events == []
+    assert result.detections
+    assert pipeline.counter.in_count == 0
+    assert pipeline.counter.out_count == 0
+
+
 def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     video = tmp_path / "simulador.avi"
     writer = cv2.VideoWriter(str(video), cv2.VideoWriter_fourcc(*"MJPG"), 10, (120, 80))

@@ -30,24 +30,28 @@ class CvPipeline:
         source_id: str,
         line: CountLine | None = None,
         tracker: CentroidTracker | None = None,
+        count_passages: bool = True,
     ) -> None:
         self.detector = detector
         self.source_id = source_id
         self.line = line or CountLine()
         self.tracker = tracker or CentroidTracker()
         self.counter = PassageCounter(self.line)
+        self.count_passages = count_passages
 
     def process(self, frame: np.ndarray, moment: datetime | None = None) -> FrameResult:
         detections = self.detector.detect(frame)
         tracks = self.tracker.update(detections)
-        events = self.counter.update(
-            tracks,
-            (frame.shape[1], frame.shape[0]),
-            self.source_id,
-            self.detector.model_version,
-            moment,
-        )
-        self.counter.retain_tracks(self.tracker.active_ids)
+        events = []
+        if self.count_passages:
+            events = self.counter.update(
+                tracks,
+                (frame.shape[1], frame.shape[0]),
+                self.source_id,
+                self.detector.model_version,
+                moment,
+            )
+            self.counter.retain_tracks(self.tracker.active_ids)
         return FrameResult(
             detections, tracks, events, self.counter.in_count, self.counter.out_count
         )
@@ -57,7 +61,8 @@ class CvPipeline:
         height, width = image.shape[:2]
         start = (int(self.line.start[0] * width), int(self.line.start[1] * height))
         end = (int(self.line.end[0] * width), int(self.line.end[1] * height))
-        cv2.line(image, start, end, (0, 220, 255), 2)
+        if self.count_passages:
+            cv2.line(image, start, end, (0, 220, 255), 2)
         for detection in result.detections:
             cv2.rectangle(
                 image,
@@ -79,12 +84,17 @@ class CvPipeline:
                 1,
             )
         cv2.rectangle(image, (0, 0), (min(width, 360), 38), (20, 20, 20), -1)
+        label = (
+            f"Entradas: {result.in_count}  Saidas: {result.out_count}"
+            if self.count_passages
+            else f"Bovinos: {len(result.detections)}"
+        )
         cv2.putText(
             image,
-            f"Entradas: {result.in_count}  Saidas: {result.out_count}",
+            label,
             (8, 26),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
+            0.65 if self.count_passages else 0.5,
             (255, 255, 255),
             2,
         )
