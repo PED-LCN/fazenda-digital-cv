@@ -54,6 +54,16 @@ def test_pipeline_counts_both_directions_and_serializes_events() -> None:
     assert payload["occurred_at"].endswith("+00:00")
 
 
+def test_detection_only_does_not_emit_passages() -> None:
+    pipeline = CvPipeline(SimulatorCowDetector(min_area=30), "simulador-1", count_passages=False)
+    for position in (34, 42, 50, 58, 66, 74):
+        result = pipeline.process(scene(position))
+        assert result.events == []
+    assert result.detections
+    assert pipeline.counter.in_count == 0
+    assert pipeline.counter.out_count == 0
+
+
 def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     video = tmp_path / "simulador.avi"
     writer = cv2.VideoWriter(str(video), cv2.VideoWriter_fourcc(*"MJPG"), 10, (120, 80))
@@ -63,6 +73,7 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     writer.release()
     events_file = tmp_path / "eventos.jsonl"
     annotated = tmp_path / "demonstracao.avi"
+    run_report = tmp_path / "execucao.json"
 
     exit_code = main(
         [
@@ -73,6 +84,8 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
             str(events_file),
             "--annotated",
             str(annotated),
+            "--run-report",
+            str(run_report),
         ]
     )
 
@@ -84,6 +97,9 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     assert output.get(cv2.CAP_PROP_FRAME_COUNT) == 10
     output.release()
     assert "1 entradas" in capsys.readouterr().err
+    report = json.loads(run_report.read_text(encoding="utf-8"))
+    assert report["frames"] == 10
+    assert report["passage_events"] == 1
 
 
 def test_yolox_adapter_uses_letterboxed_bgr_and_raw_output() -> None:

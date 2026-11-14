@@ -14,7 +14,9 @@ import numpy as np
 
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
+from fazenda_cv.model_qualification import load_model_card
 from fazenda_cv.pipeline import CvPipeline
+from fazenda_cv.run_report import RunReport
 from fazenda_cv.sources import (
     FrameSource,
     OpenCVSource,
@@ -36,7 +38,11 @@ def build_parser() -> argparse.ArgumentParser:
     detector = parser.add_mutually_exclusive_group(required=True)
     detector.add_argument("--simulator", action="store_true", help="Detecta vacas cinzas do Godot")
     detector.add_argument("--model", help="Modelo bovino YOLOX em ONNX para vídeo real")
+    detector.add_argument("--model-card", type=Path, help="Cartão TOML verificado do modelo YOLOX")
     parser.add_argument("--source-id", default="corredor-1")
+    parser.add_argument(
+        "--detection-only", action="store_true", help="Detecta e anota sem emitir passagens"
+    )
     parser.add_argument(
         "--line",
         nargs=4,
@@ -70,6 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Reduz arquivos/câmera para esta largura; 0 mantém a resolução original",
     )
     parser.add_argument("--events", type=Path, help="Grava eventos JSONL, além de emitir no stdout")
+    parser.add_argument("--run-report", type=Path, help="Resumo operacional JSON da execução")
     parser.add_argument(
         "--annotated", type=Path, help="Grava vídeo local com linha, caixas e contagens"
     )
@@ -181,6 +188,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.draw_line and not _gui_available():
         parser.error("--draw-line requer OpenCV com GUI; instale opencv-python")
+    if args.draw_line and args.detection_only:
+        parser.error("--draw-line não se aplica ao modo --detection-only")
     if args.fps < 1 or args.width < 16 or args.height < 16 or args.max_width < 0:
         parser.error("fps, largura e altura devem ser positivos")
     if args.max_frames < 0:
@@ -189,6 +198,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Use um modelo ONNX para câmera real; --simulator exige cena fixa Godot")
     if args.model and not Path(args.model).is_file():
         parser.error("O modelo ONNX informado não existe")
+    if args.model_card:
+        try:
+            card = load_model_card(args.model_card)
+        except (OSError, ValueError) as error:
+            parser.error(f"Model card inválido: {error}")
+        args.model = str(card.path)
+        args.input_size = card.input_size
+        args.class_id = card.cattle_class_id
 
     coordinates = args.line or ((0.34, 0.32, 0.34, 0.13) if args.simulator else (0.5, 1, 0.5, 0))
     line = CountLine((coordinates[0], coordinates[1]), (coordinates[2], coordinates[3]))
@@ -197,7 +214,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.simulator
         else YoloXOnnxDetector(args.model, args.input_size, args.class_id)
     )
-    pipeline = CvPipeline(detector, args.source_id, line)
+    pipeline = CvPipeline(detector, args.source_id, line, count_passages=not args.detection_only)
+    report = RunReport(args.source_id, detector.model_version)
     game: subprocess.Popen[bytes] | None = None
     writer: cv2.VideoWriter | None = None
     preview: subprocess.Popen[bytes] | None = None
@@ -248,7 +266,9 @@ def main(argv: list[str] | None = None) -> int:
                     continue
                 cv2.destroyWindow("Fazenda CV - aguardando calibracao")
                 line, frame = _draw_line(frame, frame_stream)
-                pipeline = CvPipeline(detector, args.source_id, line)
+                pipeline = CvPipeline(
+                    detector, args.source_id, line, count_passages=not args.detection_only
+                )
                 started = time.monotonic()
                 print(
                     f"Linha escolhida: --line {line.start[0]:.4f} {line.start[1]:.4f} "
@@ -257,6 +277,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 args.draw_line = False
             result = pipeline.process(frame, sample.occurred_at)
+            report.record_frame(len(result.detections), len(result.events))
             frames += 1
             for event in result.events:
                 payload = json.dumps(event.to_dict(), ensure_ascii=False, separators=(",", ":"))
@@ -324,6 +345,8 @@ def main(argv: list[str] | None = None) -> int:
         f"{pipeline.counter.out_count} saídas.",
         file=sys.stderr,
     )
+    if args.run_report:
+        report.save(args.run_report, max(time.monotonic() - started, 0.001))
     return 0
 
 
