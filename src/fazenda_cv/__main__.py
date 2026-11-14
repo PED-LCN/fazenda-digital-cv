@@ -41,6 +41,9 @@ def build_parser() -> argparse.ArgumentParser:
     detector.add_argument("--model-card", type=Path, help="Cartão TOML verificado do modelo YOLOX")
     parser.add_argument("--source-id", default="corredor-1")
     parser.add_argument(
+        "--detection-only", action="store_true", help="Detecta e anota sem emitir passagens"
+    )
+    parser.add_argument(
         "--line",
         nargs=4,
         type=float,
@@ -185,6 +188,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.draw_line and not _gui_available():
         parser.error("--draw-line requer OpenCV com GUI; instale opencv-python")
+    if args.draw_line and args.detection_only:
+        parser.error("--draw-line não se aplica ao modo --detection-only")
     if args.fps < 1 or args.width < 16 or args.height < 16 or args.max_width < 0:
         parser.error("fps, largura e altura devem ser positivos")
     if args.max_frames < 0:
@@ -209,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.simulator
         else YoloXOnnxDetector(args.model, args.input_size, args.class_id)
     )
-    pipeline = CvPipeline(detector, args.source_id, line)
+    pipeline = CvPipeline(detector, args.source_id, line, count_passages=not args.detection_only)
     report = RunReport(args.source_id, detector.model_version)
     game: subprocess.Popen[bytes] | None = None
     writer: cv2.VideoWriter | None = None
@@ -261,7 +266,9 @@ def main(argv: list[str] | None = None) -> int:
                     continue
                 cv2.destroyWindow("Fazenda CV - aguardando calibracao")
                 line, frame = _draw_line(frame, frame_stream)
-                pipeline = CvPipeline(detector, args.source_id, line)
+                pipeline = CvPipeline(
+                    detector, args.source_id, line, count_passages=not args.detection_only
+                )
                 started = time.monotonic()
                 print(
                     f"Linha escolhida: --line {line.start[0]:.4f} {line.start[1]:.4f} "
