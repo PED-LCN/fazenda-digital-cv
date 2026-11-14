@@ -37,7 +37,15 @@ class CvPipeline:
         self.tracker = tracker or CentroidTracker()
         self.counter = PassageCounter(self.line)
 
-    def process(self, frame: np.ndarray, moment: datetime | None = None) -> FrameResult:
+    def process(
+        self,
+        frame: np.ndarray,
+        moment: datetime | None = None,
+        *,
+        session_id: str | None = None,
+        video_offset_ms: int | None = None,
+        time_basis: str = "live",
+    ) -> FrameResult:
         detections = self.detector.detect(frame)
         tracks = self.tracker.update(detections)
         events = self.counter.update(
@@ -46,6 +54,9 @@ class CvPipeline:
             self.source_id,
             self.detector.model_version,
             moment,
+            session_id,
+            video_offset_ms,
+            time_basis,
         )
         self.counter.retain_tracks(self.tracker.active_ids)
         return FrameResult(

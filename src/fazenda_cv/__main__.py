@@ -256,7 +256,13 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 args.draw_line = False
-            result = pipeline.process(frame, sample.occurred_at)
+            result = pipeline.process(
+                frame,
+                sample.occurred_at,
+                session_id=sample.session_id,
+                video_offset_ms=sample.video_offset_ms,
+                time_basis=sample.time_basis,
+            )
             frames += 1
             for event in result.events:
                 payload = json.dumps(event.to_dict(), ensure_ascii=False, separators=(",", ":"))

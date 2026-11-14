@@ -70,6 +70,8 @@ Cada linha do `stdout` ou de `--events` é um objeto JSON independente:
 
 `event_id` permite deduplicação pelo consumidor. `occurred_at` está em UTC. Em vídeo gravado, o intervalo entre quadros segue o FPS do arquivo, ancorado ao instante do replay. A confiança `1.0` do detector da simulação representa uma regra de cor, não uma probabilidade calibrada. A integração externa fica responsável por sessões, total esperado, alertas, armazenamento e ERP.
 
+Em gravações, os eventos também incluem `session_id`, `video_offset_ms` e `time_basis: "replay"`. O deslocamento em milissegundos localiza o quadro no arquivo independentemente de quando ele é reproduzido; `occurred_at` continua indicando o horário do replay, não o horário original de captura. Em RTSP, `time_basis` é ao vivo e não há deslocamento no arquivo.
+
 ## Validação e limites
 
 ```bash
@@ -83,3 +85,5 @@ Um hook Git executa esses comandos antes de cada commit e o fluxo de CI repete o
 Os testes cobrem detecção da cena simulada, contagem nos dois sentidos, reprodução de AVI até JSON e vídeo anotado, e formato de entrada do adaptador YOLOX. Neste ambiente, a captura da janela Godot foi verificada com curral vazio (80 quadros, zero contagens) e com duas vacas visíveis; uma reprodução com a porteira produziu uma passagem. Isso demonstra a integração, não precisão em fazenda. Sobreposição de animais, mudança de ângulo e câmera RTSP ainda exigem avaliação com dados reais.
 
 O procedimento e as métricas para essa avaliação estão em [docs/VALIDACAO.md](docs/VALIDACAO.md).
+
+A reprodução temporal com um clipe real está registrada em [docs/VALIDACAO_TEMPO_VIDEO.md](docs/VALIDACAO_TEMPO_VIDEO.md).

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
+from uuid import uuid4
 
 import cv2
 import numpy as np
@@ -18,6 +19,9 @@ import numpy as np
 class CapturedFrame:
     image: np.ndarray
     occurred_at: datetime
+    session_id: str | None = None
+    video_offset_ms: int | None = None
+    time_basis: str = "live"
 
 
 class FrameSource(Protocol):
@@ -33,6 +37,7 @@ class OpenCVSource:
 
     def frames(self) -> Iterator[CapturedFrame]:
         rtsp = self.location.lower().startswith(("rtsp://", "rtsps://"))
+        session_id = str(uuid4())
         while True:
             capture = cv2.VideoCapture()
             if rtsp:
@@ -67,7 +72,12 @@ class OpenCVSource:
                         if rtsp or not fps or fps <= 0
                         else started_at + timedelta(seconds=frame_index / fps)
                     )
-                    yield CapturedFrame(frame, moment)
+                    offset_ms = (
+                        None if rtsp or not fps or fps <= 0 else round(frame_index * 1000 / fps)
+                    )
+                    yield CapturedFrame(
+                        frame, moment, session_id, offset_ms, "live" if rtsp else "replay"
+                    )
                     frame_index += 1
             finally:
                 capture.release()
