@@ -94,4 +94,6 @@ As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_G
 
 O catálogo inicial de fotos e vídeos reais, com origem e hashes, está em [docs/CATALOGO_MIDIAS_REAIS.md](docs/CATALOGO_MIDIAS_REAIS.md).
 
-O registro de pesos candidatos e a medição de caixas estão em [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).
+Para demonstrar o detector com gravação real e gerar um relatório de execução, veja [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).
+
+A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_REAL.md](docs/FONTES_VIDEO_REAL.md).
