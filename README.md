@@ -88,4 +88,8 @@ As duas frentes planejadas para gravações reais, o protocolo de dados e as dep
 
 As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_GRAVACOES_REAIS.md](docs/BACKLOG_GRAVACOES_REAIS.md).
 
+Para demonstrar o detector com gravação real e gerar um relatório de execução, veja [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).
+
+A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_REAL.md](docs/FONTES_VIDEO_REAL.md).
+
 O registro de pesos candidatos e a medição de caixas estão em [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).
