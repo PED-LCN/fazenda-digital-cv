@@ -85,3 +85,5 @@ Um hook Git executa esses comandos antes de cada commit e o fluxo de CI repete o
 Os testes cobrem detecção da cena simulada, contagem nos dois sentidos, reprodução de AVI até JSON e vídeo anotado, e formato de entrada do adaptador YOLOX. Neste ambiente, a captura da janela Godot foi verificada com curral vazio (80 quadros, zero contagens) e com duas vacas visíveis; uma reprodução com a porteira produziu uma passagem. Isso demonstra a integração, não precisão em fazenda. Sobreposição de animais, mudança de ângulo e câmera RTSP ainda exigem avaliação com dados reais.
 
 O procedimento e as métricas para essa avaliação estão em [docs/VALIDACAO.md](docs/VALIDACAO.md).
+
+A reprodução temporal com um clipe real está registrada em [docs/VALIDACAO_TEMPO_VIDEO.md](docs/VALIDACAO_TEMPO_VIDEO.md).
