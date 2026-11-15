@@ -115,3 +115,6 @@ A estimativa de ocupação por região, com eventos JSON v2, está em
 
 A comparação YOLOX-S/Tiny e a configuração de threads de CPU estão em
 [docs/DETECTOR_CPU.md](docs/DETECTOR_CPU.md).
+
+Para uma cópia H.264 interpolada a 30/60 FPS para apresentação, preservando os
+resultados da análise, veja [docs/APRESENTACAO_30FPS.md](docs/APRESENTACAO_30FPS.md).
