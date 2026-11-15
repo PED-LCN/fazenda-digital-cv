@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import cv2
 import numpy as np
+import pytest
 
 from fazenda_cv.__main__ import main
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
@@ -54,6 +55,16 @@ def test_pipeline_counts_both_directions_and_serializes_events() -> None:
     assert payload["occurred_at"].endswith("+00:00")
 
 
+def test_detection_only_does_not_emit_passages() -> None:
+    pipeline = CvPipeline(SimulatorCowDetector(min_area=30), "simulador-1", count_passages=False)
+    for position in (34, 42, 50, 58, 66, 74):
+        result = pipeline.process(scene(position))
+        assert result.events == []
+    assert result.detections
+    assert pipeline.counter.in_count == 0
+    assert pipeline.counter.out_count == 0
+
+
 def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     video = tmp_path / "simulador.avi"
     writer = cv2.VideoWriter(str(video), cv2.VideoWriter_fourcc(*"MJPG"), 10, (120, 80))
@@ -61,18 +72,26 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     for position in (None, None, 30, 38, 46, 54, 62, 70, 78, 86):
         writer.write(scene(position))
     writer.release()
+    outbox = tmp_path / "outbox.sqlite3"
     events_file = tmp_path / "eventos.jsonl"
     annotated = tmp_path / "demonstracao.avi"
+    run_report = tmp_path / "execucao.json"
 
     exit_code = main(
         [
             "--source",
             str(video),
             "--simulator",
+            "--outbox",
+            str(outbox),
+            "--access-id",
+            "curral",
             "--events",
             str(events_file),
             "--annotated",
             str(annotated),
+            "--run-report",
+            str(run_report),
         ]
     )
 
@@ -82,11 +101,23 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     assert payloads[0]["time_basis"] == "replay"
     assert payloads[0]["video_offset_ms"] == 400
     assert payloads[0]["session_id"]
+    import sqlite3
+
+    with sqlite3.connect(outbox) as db:
+        queued = json.loads(db.execute("SELECT payload FROM outbox").fetchone()[0])
+    assert queued["schema_version"] == 2
+    assert queued["event_id"] == payloads[0]["event_id"]
+    assert queued["access_id"] == "curral"
+    assert queued["video_offset_ms"] == 400
     assert annotated.is_file()
     output = cv2.VideoCapture(str(annotated))
     assert output.get(cv2.CAP_PROP_FRAME_COUNT) == 10
+    assert output.get(cv2.CAP_PROP_FPS) == pytest.approx(10)
     output.release()
     assert "1 entradas" in capsys.readouterr().err
+    report = json.loads(run_report.read_text(encoding="utf-8"))
+    assert report["frames"] == 10
+    assert report["passage_events"] == 1
 
 
 def test_yolox_adapter_uses_letterboxed_bgr_and_raw_output() -> None:

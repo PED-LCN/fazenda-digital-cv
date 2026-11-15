@@ -58,6 +58,8 @@ Se a captura da janela não estiver disponível no computador de apresentação,
 
 A fonte muda sem alterar o rastreamento, a contagem ou o contrato de eventos. O detector real espera um modelo **YOLOX ONNX com saída bruta** e classe bovino 19 no mapa COCO por padrão; `--class-id` e `--input-size` permitem ajustar outro modelo compatível. O pré-processamento segue a [demonstração oficial de YOLOX para ONNX Runtime](https://github.com/Megvii-BaseDetection/YOLOX/blob/main/demo/ONNXRuntime/onnx_inference.py). Nenhum peso está incluído. O identificador do detector registra parte do SHA-256 dos pesos usados. Antes da distribuição, registre também origem e licença dos pesos e dos dados. Trocar a entrada pela câmera não comprova a qualidade das detecções: serão necessários pesos licenciados, ajuste da linha, vídeo real anotado e medição em campo.
 
+Ao processar um arquivo com FPS válido, `--annotated` e `--preview` usam o FPS informado pelo próprio arquivo para manter a velocidade de reprodução. Para RTSP e fontes sem FPS válido, usam o valor de `--fps` (30 por padrão). O FPS de processamento medido em `--run-report` é separado da velocidade de reprodução.
+
 Para hardware mais limitado, comece com `--fps 5 --width 640 --height 360` na captura da janela e `--max-width 640` em vídeo ou RTSP; compare perda de passagens e latência antes de reduzir ainda mais. A prévia e a gravação anotada são opcionais.
 
 ## Contrato de saída
@@ -91,3 +93,19 @@ O procedimento e as métricas para essa avaliação estão em [docs/VALIDACAO.md
 Para entregar eventos v2 a um receptor HTTP com fila persistente e retentativas,
 consulte [docs/WEBHOOK.md](docs/WEBHOOK.md). O publicador funciona em processo
 separado da análise do vídeo.
+A reprodução temporal com um clipe real está registrada em [docs/VALIDACAO_TEMPO_VIDEO.md](docs/VALIDACAO_TEMPO_VIDEO.md).
+
+As duas frentes planejadas para gravações reais, o protocolo de dados e as dependências de implementação estão em [docs/PREPARACAO_GRAVACOES_REAIS.md](docs/PREPARACAO_GRAVACOES_REAIS.md).
+
+As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_GRAVACOES_REAIS.md](docs/BACKLOG_GRAVACOES_REAIS.md).
+
+O catálogo inicial de fotos e vídeos reais, com origem e hashes, está em [docs/CATALOGO_MIDIAS_REAIS.md](docs/CATALOGO_MIDIAS_REAIS.md).
+
+Para demonstrar o detector com gravação real e gerar um relatório de execução, veja [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).
+
+Para vídeos de alta resolução com bovinos pequenos, a inferência opcional por recortes e o ensaio MooTrack360 estão em [docs/INFERENCIA_RECORTES.md](docs/INFERENCIA_RECORTES.md).
+
+A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_REAL.md](docs/FONTES_VIDEO_REAL.md).
+
+Para a apresentação com vídeos reais, seleção de trechos e eventos persistidos
+para um receptor HTTP, consulte [docs/DEMONSTRACAO_VIDEO_REAL.md](docs/DEMONSTRACAO_VIDEO_REAL.md).

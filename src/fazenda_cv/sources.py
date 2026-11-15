@@ -7,6 +7,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from math import isfinite
 from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
@@ -31,9 +32,35 @@ class FrameSource(Protocol):
 class OpenCVSource:
     """Reads a video file or RTSP stream without changing downstream CV code."""
 
-    def __init__(self, location: str, reconnect_seconds: float = 2) -> None:
+    def __init__(
+        self,
+        location: str,
+        reconnect_seconds: float = 2,
+        *,
+        start_seconds: float = 0,
+        duration_seconds: float | None = None,
+        frame_step: int = 1,
+    ) -> None:
+        if (
+            not isfinite(start_seconds)
+            or start_seconds < 0
+            or frame_step < 1
+            or (
+                duration_seconds is not None
+                and (not isfinite(duration_seconds) or duration_seconds <= 0)
+            )
+        ):
+            raise ValueError("Trecho ou intervalo de quadros inválido")
+        if location.lower().startswith(("rtsp://", "rtsps://")) and (
+            start_seconds or duration_seconds is not None or frame_step != 1
+        ):
+            raise ValueError("Seleção de trecho exige arquivo de vídeo")
+        self.start_seconds = start_seconds
+        self.duration_seconds = duration_seconds
+        self.frame_step = frame_step
         self.location = location
         self.reconnect_seconds = reconnect_seconds
+        self.fps: float | None = None
 
     def frames(self) -> Iterator[CapturedFrame]:
         rtsp = self.location.lower().startswith(("rtsp://", "rtsps://"))
@@ -60,25 +87,44 @@ class OpenCVSource:
                     continue
                 raise OSError(f"Não foi possível abrir o vídeo: {self.location}")
             try:
-                fps = capture.get(cv2.CAP_PROP_FPS)
+                reported_fps = capture.get(cv2.CAP_PROP_FPS)
+                self.fps = (
+                    reported_fps
+                    if not rtsp and isfinite(reported_fps) and reported_fps > 0
+                    else None
+                )
+                if self.fps is None and (
+                    self.start_seconds or self.duration_seconds is not None or self.frame_step != 1
+                ):
+                    raise ValueError("Seleção de trecho exige FPS válido")
                 started_at = datetime.now(UTC)
                 frame_index = 0
                 while True:
-                    ok, frame = capture.read()
+                    ok = capture.grab()
                     if not ok:
                         break
+                    index = frame_index
+                    frame_index += 1
+                    seconds = index / self.fps if self.fps else 0
+                    if self.duration_seconds is not None and (
+                        seconds >= self.start_seconds + self.duration_seconds
+                    ):
+                        break
+                    first = round(self.start_seconds * self.fps) if self.fps else 0
+                    if index < first or (index - first) % self.frame_step:
+                        continue
+                    ok, frame = capture.retrieve()
+                    if not ok:
+                        raise OSError("Falha ao decodificar quadro selecionado")
                     moment = (
                         datetime.now(UTC)
-                        if rtsp or not fps or fps <= 0
-                        else started_at + timedelta(seconds=frame_index / fps)
+                        if self.fps is None
+                        else started_at + timedelta(seconds=index / self.fps)
                     )
-                    offset_ms = (
-                        None if rtsp or not fps or fps <= 0 else round(frame_index * 1000 / fps)
-                    )
+                    offset_ms = None if self.fps is None else round(index * 1000 / self.fps)
                     yield CapturedFrame(
                         frame, moment, session_id, offset_ms, "live" if rtsp else "replay"
                     )
-                    frame_index += 1
             finally:
                 capture.release()
             if not rtsp:

@@ -7,14 +7,19 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from math import isfinite
 from pathlib import Path
+from uuid import uuid4
 
 import cv2
 import numpy as np
 
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
+from fazenda_cv.integration_events import passage_to_integration_event
+from fazenda_cv.model_qualification import load_model_card
 from fazenda_cv.pipeline import CvPipeline
+from fazenda_cv.run_report import RunReport
 from fazenda_cv.sources import (
     FrameSource,
     OpenCVSource,
@@ -22,6 +27,8 @@ from fazenda_cv.sources import (
     find_x11_window,
     launch_godot,
 )
+from fazenda_cv.tiled_detection import TiledDetector
+from fazenda_cv.webhook import EventOutbox
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,7 +43,16 @@ def build_parser() -> argparse.ArgumentParser:
     detector = parser.add_mutually_exclusive_group(required=True)
     detector.add_argument("--simulator", action="store_true", help="Detecta vacas cinzas do Godot")
     detector.add_argument("--model", help="Modelo bovino YOLOX em ONNX para vídeo real")
+    detector.add_argument("--model-card", type=Path, help="Cartão TOML verificado do modelo YOLOX")
     parser.add_argument("--source-id", default="corredor-1")
+    parser.add_argument("--start-seconds", type=float, default=0)
+    parser.add_argument("--duration-seconds", type=float)
+    parser.add_argument("--frame-step", type=int, default=1)
+    parser.add_argument("--outbox", type=Path, help="Fila persistente de eventos v2")
+    parser.add_argument("--access-id", help="Acesso atribuído à linha de passagem")
+    parser.add_argument(
+        "--detection-only", action="store_true", help="Detecta e anota sem emitir passagens"
+    )
     parser.add_argument(
         "--line",
         nargs=4,
@@ -55,6 +71,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--class-id", type=int, default=19, help="Classe bovino no modelo ONNX")
     parser.add_argument("--input-size", type=int, default=416)
     parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.35,
+        help="Confiança mínima da detecção ONNX (padrão: 0.35)",
+    )
+    parser.add_argument(
+        "--tile-size", type=int, default=0, help="Lado dos recortes em pixels; 0 desativa"
+    )
+    parser.add_argument(
+        "--tile-overlap", type=int, default=0, help="Sobreposição entre recortes em pixels"
+    )
+    parser.add_argument(
         "--fps", type=int, default=30, help="FPS solicitado na captura de janela (padrão: 30)"
     )
     parser.add_argument(
@@ -70,6 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Reduz arquivos/câmera para esta largura; 0 mantém a resolução original",
     )
     parser.add_argument("--events", type=Path, help="Grava eventos JSONL, além de emitir no stdout")
+    parser.add_argument("--run-report", type=Path, help="Resumo operacional JSON da execução")
     parser.add_argument(
         "--annotated", type=Path, help="Grava vídeo local com linha, caixas e contagens"
     )
@@ -87,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _open_writer(path: Path, width: int, height: int, fps: int) -> cv2.VideoWriter:
+def _open_writer(path: Path, width: int, height: int, fps: float) -> cv2.VideoWriter:
     path.parent.mkdir(parents=True, exist_ok=True)
     codec = "MJPG" if path.suffix.lower() == ".avi" else "mp4v"
     writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*codec), fps, (width, height))
@@ -96,7 +125,7 @@ def _open_writer(path: Path, width: int, height: int, fps: int) -> cv2.VideoWrit
     return writer
 
 
-def _open_preview(width: int, height: int, fps: int) -> subprocess.Popen[bytes]:
+def _open_preview(width: int, height: int, fps: float) -> subprocess.Popen[bytes]:
     if shutil.which("ffplay") is None:
         raise RuntimeError("ffplay não foi encontrado para a prévia")
     return subprocess.Popen(
@@ -176,28 +205,85 @@ def _gui_available() -> bool:
     )
 
 
+def _output_fps(source: FrameSource, fallback_fps: int) -> float:
+    if isinstance(source, OpenCVSource) and source.fps is not None:
+        return source.fps / source.frame_step
+    return fallback_fps
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.outbox and not args.access_id:
+        parser.error("--outbox exige --access-id")
+    if (
+        not isfinite(args.start_seconds)
+        or args.start_seconds < 0
+        or args.frame_step < 1
+        or (
+            args.duration_seconds is not None
+            and (not isfinite(args.duration_seconds) or args.duration_seconds <= 0)
+        )
+    ):
+        parser.error("Trecho ou intervalo de quadros inválido")
+    if (args.start_seconds or args.duration_seconds is not None or args.frame_step != 1) and (
+        not args.source or args.source.lower().startswith(("rtsp://", "rtsps://"))
+    ):
+        parser.error("Seleção de trecho exige arquivo de vídeo")
     if args.draw_line and not _gui_available():
         parser.error("--draw-line requer OpenCV com GUI; instale opencv-python")
+    if args.draw_line and args.detection_only:
+        parser.error("--draw-line não se aplica ao modo --detection-only")
     if args.fps < 1 or args.width < 16 or args.height < 16 or args.max_width < 0:
         parser.error("fps, largura e altura devem ser positivos")
     if args.max_frames < 0:
         parser.error("max-frames não pode ser negativo")
+    if not 0 < args.confidence_threshold <= 1:
+        parser.error("confidence-threshold deve estar entre 0 (exclusivo) e 1")
+    if args.simulator and args.confidence_threshold != 0.35:
+        parser.error("--confidence-threshold exige um modelo ONNX")
+    if (
+        args.tile_size < 0
+        or args.tile_overlap < 0
+        or (args.tile_size == 0 and args.tile_overlap)
+        or (args.tile_size and args.tile_overlap >= args.tile_size)
+    ):
+        parser.error("tile-size deve ser positivo e tile-overlap menor que tile-size")
+    if args.tile_size and args.simulator:
+        parser.error("--tile-size exige um modelo ONNX")
+    if args.tile_size and args.max_width:
+        parser.error("Use --max-width 0 com --tile-size para preservar a resolução")
     if args.simulator and args.source and args.source.lower().startswith(("rtsp://", "rtsps://")):
         parser.error("Use um modelo ONNX para câmera real; --simulator exige cena fixa Godot")
     if args.model and not Path(args.model).is_file():
         parser.error("O modelo ONNX informado não existe")
+    if args.model_card:
+        try:
+            card = load_model_card(args.model_card)
+        except (OSError, ValueError) as error:
+            parser.error(f"Model card inválido: {error}")
+        args.model = str(card.path)
+        args.input_size = card.input_size
+        args.class_id = card.cattle_class_id
 
     coordinates = args.line or ((0.34, 0.32, 0.34, 0.13) if args.simulator else (0.5, 1, 0.5, 0))
     line = CountLine((coordinates[0], coordinates[1]), (coordinates[2], coordinates[3]))
     detector = (
         SimulatorCowDetector(tuple(args.roi))
         if args.simulator
-        else YoloXOnnxDetector(args.model, args.input_size, args.class_id)
+        else YoloXOnnxDetector(
+            args.model,
+            args.input_size,
+            args.class_id,
+            confidence_threshold=args.confidence_threshold,
+        )
     )
-    pipeline = CvPipeline(detector, args.source_id, line)
+    if args.tile_size:
+        detector = TiledDetector(detector, args.tile_size, args.tile_overlap)
+    pipeline = CvPipeline(detector, args.source_id, line, count_passages=not args.detection_only)
+    report = RunReport(args.source_id, detector.model_version)
+    outbox = EventOutbox(args.outbox) if args.outbox else None
+    live_session = str(uuid4())
     game: subprocess.Popen[bytes] | None = None
     writer: cv2.VideoWriter | None = None
     preview: subprocess.Popen[bytes] | None = None
@@ -217,7 +303,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.window_id:
             source = X11WindowSource(args.window_id, args.width, args.height, args.fps)
         else:
-            source = OpenCVSource(args.source)
+            source = OpenCVSource(
+                args.source,
+                start_seconds=args.start_seconds,
+                duration_seconds=args.duration_seconds,
+                frame_step=args.frame_step,
+            )
         if args.events:
             args.events.parent.mkdir(parents=True, exist_ok=True)
             event_file = args.events.open("a", encoding="utf-8")
@@ -248,7 +339,9 @@ def main(argv: list[str] | None = None) -> int:
                     continue
                 cv2.destroyWindow("Fazenda CV - aguardando calibracao")
                 line, frame = _draw_line(frame, frame_stream)
-                pipeline = CvPipeline(detector, args.source_id, line)
+                pipeline = CvPipeline(
+                    detector, args.source_id, line, count_passages=not args.detection_only
+                )
                 started = time.monotonic()
                 print(
                     f"Linha escolhida: --line {line.start[0]:.4f} {line.start[1]:.4f} "
@@ -263,8 +356,14 @@ def main(argv: list[str] | None = None) -> int:
                 video_offset_ms=sample.video_offset_ms,
                 time_basis=sample.time_basis,
             )
+            report.record_frame(len(result.detections), len(result.events))
             frames += 1
             for event in result.events:
+                if outbox:
+                    wrapped = passage_to_integration_event(
+                        event, access_id=args.access_id, session_id=live_session
+                    )
+                    outbox.enqueue(wrapped.to_dict())
                 payload = json.dumps(event.to_dict(), ensure_ascii=False, separators=(",", ":"))
                 print(payload, flush=True)
                 if event_file:
@@ -273,13 +372,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.annotated or args.preview:
                 image = pipeline.annotate(frame, result)
                 height, width = image.shape[:2]
+                output_fps = _output_fps(source, args.fps)
                 if args.annotated:
                     if writer is None:
-                        writer = _open_writer(args.annotated, width, height, args.fps)
+                        writer = _open_writer(args.annotated, width, height, output_fps)
                     writer.write(image)
                 if args.preview:
                     if preview is None:
-                        preview = _open_preview(width, height, args.fps)
+                        preview = _open_preview(width, height, output_fps)
                     try:
                         assert preview.stdin is not None
                         preview.stdin.write(image.tobytes())
@@ -330,6 +430,20 @@ def main(argv: list[str] | None = None) -> int:
         f"{pipeline.counter.out_count} saídas.",
         file=sys.stderr,
     )
+    if args.run_report:
+        report.save(
+            args.run_report,
+            max(time.monotonic() - started, 0.001),
+            configuration={
+                "start_seconds": args.start_seconds,
+                "duration_seconds": args.duration_seconds,
+                "frame_step": args.frame_step,
+                "confidence_threshold": args.confidence_threshold,
+                "tile_size": args.tile_size,
+                "tile_overlap": args.tile_overlap,
+                "detection_only": args.detection_only,
+            },
+        )
     return 0
 
 
