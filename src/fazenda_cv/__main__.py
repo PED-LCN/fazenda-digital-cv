@@ -62,6 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--class-id", type=int, default=19, help="Classe bovino no modelo ONNX")
     parser.add_argument("--input-size", type=int, default=416)
     parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.35,
+        help="Confiança mínima da detecção ONNX (padrão: 0.35)",
+    )
+    parser.add_argument(
         "--tile-size", type=int, default=0, help="Lado dos recortes em pixels; 0 desativa"
     )
     parser.add_argument(
@@ -201,6 +207,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("fps, largura e altura devem ser positivos")
     if args.max_frames < 0:
         parser.error("max-frames não pode ser negativo")
+    if not 0 < args.confidence_threshold <= 1:
+        parser.error("confidence-threshold deve estar entre 0 (exclusivo) e 1")
+    if args.simulator and args.confidence_threshold != 0.35:
+        parser.error("--confidence-threshold exige um modelo ONNX")
     if (
         args.tile_size < 0
         or args.tile_overlap < 0
@@ -230,7 +240,12 @@ def main(argv: list[str] | None = None) -> int:
     detector = (
         SimulatorCowDetector(tuple(args.roi))
         if args.simulator
-        else YoloXOnnxDetector(args.model, args.input_size, args.class_id)
+        else YoloXOnnxDetector(
+            args.model,
+            args.input_size,
+            args.class_id,
+            confidence_threshold=args.confidence_threshold,
+        )
     )
     if args.tile_size:
         detector = TiledDetector(detector, args.tile_size, args.tile_overlap)

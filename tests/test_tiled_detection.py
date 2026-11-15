@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fazenda_cv.__main__ import main
+from fazenda_cv.__main__ import build_parser, main
 from fazenda_cv.domain import Detection
 from fazenda_cv.tiled_detection import TiledDetector
 
@@ -76,3 +76,27 @@ def test_cli_requires_original_resolution_for_tiled_model(capsys):
         main(["--source", "sample.mp4", "--model", "weights.onnx", "--tile-size", "736"])
     assert error.value.code == 2
     assert "--max-width 0" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("threshold", ["0", "-0.1", "1.1", "nan"])
+def test_cli_rejects_invalid_confidence_threshold(threshold: str, capsys):
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "--source",
+                "sample.mp4",
+                "--model",
+                "weights.onnx",
+                "--confidence-threshold",
+                threshold,
+            ]
+        )
+    assert error.value.code == 2
+    assert "confidence-threshold" in capsys.readouterr().err
+
+
+def test_cli_accepts_experimental_confidence_threshold():
+    args = build_parser().parse_args(
+        ["--source", "sample.mp4", "--model", "weights.onnx", "--confidence-threshold", "0.2"]
+    )
+    assert args.confidence_threshold == 0.2

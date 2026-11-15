@@ -2,7 +2,7 @@
 
 | Fonte | Uso nesta entrega | Limite relevante |
 | --- | --- | --- |
-| [CattleBehaviours6](https://zenodo.org/records/23064957) | Clipe curto e sem sobreposição de predições para mostrar leitura de vídeo e detecção | 1.905 clipes rotulados por comportamento; não há rótulos de passagem nem caixas por quadro declarados no registro. A licença não aparece no campo `Rights` da página; conferir os metadados/arquivo antes de redistribuir. |
+| [CattleBehaviours6](https://zenodo.org/records/23064957) | Clipe curto e sem sobreposição de predições para mostrar leitura de vídeo e detecção | 1.905 clipes rotulados em seis comportamentos; não há rótulos de passagem nem caixas por quadro declarados no registro. O [catálogo da Universidade de Bristol](https://data.bristol.ac.uk/data/dataset/b5c8h75pug4m235p3po6ogitc) informa a licença Non-Commercial Government Licence; confira seus termos antes de redistribuir. |
 | [Cow Tracking by Classification](https://github.com/meiqing-wang/Cow-TrackingbyClassification) | Referência de arquitetura e, no [acervo ETH](https://www.research-collection.ethz.ch/entities/researchdata/fe7242ce-d8bc-4e56-92a6-8c7e312432b0), avaliação futura de rastreamento | Os GIFs locais já mostram predições; o acervo separado oferece seis vídeos de teste rotulados em `tracking.tar.gz` (7,88 GB). O modelo usa YOLOv8 e classificação de indivíduos, sem encaixe direto no adaptador YOLOX ONNX. A licença do acervo ETH permite uso não comercial. |
 | [MooTrack360](https://zenodo.org/records/20287681) | Avaliação futura de detecção/rastreamento e candidato para acessos virtuais | O pacote de plantas tem regiões `gate` e `milking_station` e configurações de câmeras. Há vídeo anotado de 1 hora e sequências amostrais; os arquivos de vídeo são grandes (11,5 GB e 18,9 GB), com imagem olho de peixe. O repositório dos autores informa CC BY-NC-SA 4.0. |
 
@@ -34,4 +34,19 @@ unzip -j datasets/cattle_behaviours6/CattleBehaviours6.zip \
   --run-report artifacts/cattlebehaviours6_00062_detection.json
 ```
 
-Resultado local: 50 quadros processados; 47 quadros com ao menos uma detecção, 56 caixas ao todo, máximo de 2 caixas num quadro, 0 eventos de passagem e cerca de 35,9 FPS de processamento nesta máquina. O vídeo anotado contém 50 quadros; uma inspeção visual do primeiro quadro confirmou uma caixa verde sobre o bovino. Os números são observações da execução, não precisão nem revocação. O clipe mostra alimentação e não contém acesso de curral/ordenha; portanto não valida contagem de entradas e saídas. O registro do Zenodo não declara uma licença no campo de direitos, então o clipe permanece local e fora do Git.
+Resultado local: 50 quadros processados; 47 quadros com ao menos uma detecção, 56 caixas ao todo, máximo de 2 caixas num quadro, 0 eventos de passagem e cerca de 35,9 FPS de processamento nesta máquina. O vídeo anotado contém 50 quadros; uma inspeção visual do primeiro quadro confirmou uma caixa verde sobre o bovino. Os números são observações da execução, não precisão nem revocação. O clipe mostra alimentação e não contém acesso de curral/ordenha; portanto não valida contagem de entradas e saídas. O Zenodo não declara licença no campo de direitos; o catálogo da Universidade de Bristol informa a Non-Commercial Government Licence. O clipe permanece local e fora do Git.
+
+## Inventário dos comportamentos disponíveis
+
+O ZIP local foi inspecionado em 15/11/2026: contém 1.905 clipes distribuídos em `feeding` (398), `drinking` (243), `standing-self-grooming` (352), `standing-ruminating` (283), `standing-ruminating-part2` (161), `lying-self-grooming` (175) e `lying-ruminating` (293). A pasta `part2` usa a mesma classe de ruminação em pé, totalizando as seis classes descritas pelos autores. `labels.json`, `train.txt`, `val.txt` e `test.txt` permitem selecionar exemplos sem misturar treino e teste. A classe é do clipe inteiro; não há início/fim rotulado de imobilidade, queda ou passagem. Trechos desses clipes podem testar leitura e detecção em cenas variadas, mas não aferir os alertas temporais.
+
+Quatro clipes do `test.txt` foram lidos integralmente com o mesmo YOLOX Tiny e limiar padrão 0,35, sem redimensionamento adicional. Cada clipe tem 50 quadros. A tabela mostra apenas quadros com alguma detecção; não há caixas de referência para medir acerto.
+
+| Clipe | Comportamento rotulado | Quadros com detecção | Caixas detectadas |
+| --- | --- | ---: | ---: |
+| `00062.mp4` | Alimentação | 47/50 | 56 |
+| `00233.mp4` | Bebida | 0/50 | 0 |
+| `00093.mp4` | Ruminação deitado | 5/50 | 5 |
+| `00132.mp4` | Ruminação em pé | 0/50 | 0 |
+
+Essas diferenças mostram que uma cena de alimentação isolada não representa os outros comportamentos. Os relatórios JSON locais estão em `artifacts/cattlebehaviours6_*_repeat.json`. Antes de qualquer alerta que dependa de detecção contínua, é necessário comparar caixas anotadas em cada tipo de cena e qualificar pesos mais adequados.

@@ -47,3 +47,27 @@ Com IoU 0,5, o modo de recortes obteve **11 TP, 0 FP, 49 FN** sobre 60 caixas ro
 Nos quadros 101–120, que não foram usados no ajuste inicial dos recortes, ambos os modos obtiveram **0 TP, 0 FP, 60 FN** com a mesma escala e IoU. A revocação do modo de recortes nesse trecho foi 0. Assim, os recortes ainda não resolvem a limitação do YOLOX Tiny nesta câmera. É preciso avaliar um detector apropriado ou ajuste de pesos no próximo sprint antes de prometer monitoramento confiável.
 
 Uma análise adicional variou o tamanho do recorte. Com **512 px e sobreposição 64 px**, o detector obteve 20 TP, 0 FP e 40 FN nos quadros 1–20 e também nos quadros 101–120: revocação de 33,3% em cada trecho. O recorte de 416 px nos quadros 101–105 teve 0 TP, 9 FP e 15 FN. No vídeo amostral, 512 px produziu 88 caixas em 20 quadros a **0,74 FPS** nesta máquina. Essa configuração melhora a cobertura, mas ainda perde dois terços dos bovinos e é lenta demais para prometer monitoramento em tempo real. Os quadros 101–120 deixam de ser um conjunto intocado para qualquer ajuste posterior feito com base nessa comparação; uma futura avaliação final precisa reservar outra sessão.
+
+## Repetição em trechos separados, 15/11/2026
+
+Foram comparados os quadros 1–5, 51–55 e 101–105 do vídeo anotado. Cada trecho tem 15 caixas de referência (45 ao todo). A saída é TP/FP/FN com IoU 0,5 e coordenadas MOT escaladas por 2. Todos os trechos foram usados durante o ajuste: **não são avaliação independente**.
+
+| Configuração | 1–5 | 51–55 | 101–105 | Total |
+| --- | --- | --- | --- | --- |
+| Quadro inteiro, confiança 0,35 | 0/0/15 | 0/0/15 | 0/0/15 | 0/0/45 |
+| Recortes 736/96, confiança 0,35 | 4/0/11 | 3/0/12 | 0/0/15 | 7/0/38 |
+| Recortes 512/64, confiança 0,35 | 5/0/10 | 5/0/10 | 5/0/10 | 15/0/30 |
+| Recortes 512/64, confiança 0,20 | 6/0/9 | 7/2/8 | 5/0/10 | 18/2/27 |
+| Recortes 512/64, confiança 0,10 | 9/5/6 | 7/5/8 | 12/2/3 | 28/12/17 |
+
+O limiar de confiança agora pode ser informado em `--confidence-threshold` no CLI e no avaliador, com padrão 0,35. Por exemplo:
+
+```bash
+.venv/bin/python scripts/evaluate_mot_detector.py \
+  datasets/mootrack360/annotated_prefix.mp4 \
+  datasets/mootrack360/mot/gt.txt models/yolox_tiny.onnx \
+  --first-frame 51 --last-frame 55 --coordinate-scale 2 \
+  --tile-size 512 --tile-overlap 64 --confidence-threshold 0.20
+```
+
+O limiar 0,10 aumenta a revocação nesta amostra, mas gera 12 falsos positivos em 15 quadros. O limiar 0,20 ainda deixa 27 de 45 bovinos sem caixa. Nenhum dos dois fica aprovado para operação; é preciso outro vídeo reservado para escolha final e teste de duração maior.

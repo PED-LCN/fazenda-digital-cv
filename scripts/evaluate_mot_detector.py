@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--iou-threshold", type=float, default=0.5)
     parser.add_argument("--tile-size", type=int, default=0)
     parser.add_argument("--tile-overlap", type=int, default=0)
+    parser.add_argument("--confidence-threshold", type=float, default=0.35)
     args = parser.parse_args()
     if (
         args.tile_size < 0
@@ -32,6 +33,8 @@ def main() -> None:
         or (args.tile_size and args.tile_overlap >= args.tile_size)
     ):
         parser.error("tile-size deve ser positivo e tile-overlap menor que tile-size")
+    if not 0 < args.confidence_threshold <= 1:
+        parser.error("confidence-threshold deve estar entre 0 (exclusivo) e 1")
 
     with args.ground_truth.open(encoding="utf-8") as source:
         labels = read_mot_boxes(
@@ -40,7 +43,7 @@ def main() -> None:
             first_frame=args.first_frame,
             last_frame=args.last_frame,
         )
-    detector = YoloXOnnxDetector(str(args.model))
+    detector = YoloXOnnxDetector(str(args.model), confidence_threshold=args.confidence_threshold)
     if args.tile_size:
         detector = TiledDetector(detector, args.tile_size, args.tile_overlap)
     score = score_mot_video(
