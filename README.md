@@ -120,3 +120,7 @@ A bateria reproduzível de parâmetros, as definições de revocação e perman�
 e o perfil que atingiu as metas locais de 60%/70% estão em
 [docs/BATERIA_DETECCAO.md](docs/BATERIA_DETECCAO.md). Os resultados medidos são
 restritos aos trechos declarados, sem homologação em campo.
+
+A avaliação contínua diurna/noturna de pelo menos 30 minutos, com download,
+checkpoints e métricas por minuto/animal, está em
+[docs/AVALIACAO_30_MINUTOS.md](docs/AVALIACAO_30_MINUTOS.md).
