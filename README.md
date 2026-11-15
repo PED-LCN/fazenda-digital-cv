@@ -93,3 +93,7 @@ As duas frentes planejadas para gravações reais, o protocolo de dados e as dep
 As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_GRAVACOES_REAIS.md](docs/BACKLOG_GRAVACOES_REAIS.md).
 
 O catálogo inicial de fotos e vídeos reais, com origem e hashes, está em [docs/CATALOGO_MIDIAS_REAIS.md](docs/CATALOGO_MIDIAS_REAIS.md).
+
+Para demonstrar o detector com gravação real e gerar um relatório de execução, veja [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).
+
+A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_REAL.md](docs/FONTES_VIDEO_REAL.md).
