@@ -3,14 +3,20 @@
 | Fonte | Uso nesta entrega | Limite relevante |
 | --- | --- | --- |
 | [CattleBehaviours6](https://zenodo.org/records/23064957) | Clipe curto e sem sobreposição de predições para mostrar leitura de vídeo e detecção | 1.905 clipes rotulados por comportamento; não há rótulos de passagem nem caixas por quadro declarados no registro. A licença não aparece no campo `Rights` da página; conferir os metadados/arquivo antes de redistribuir. |
-| [Cow Tracking by Classification](https://github.com/meiqing-wang/Cow-TrackingbyClassification) | Referência de arquitetura e GIFs para inspeção qualitativa | Código Apache-2.0, mas os GIFs já mostram caixas e identidades previstas. O modelo publicado usa YOLOv8 e classificação de indivíduos; não encaixa diretamente no adaptador YOLOX ONNX nem demonstra entradas/saídas. Os pesos estão em Google Drive. |
-| [MooTrack360](https://zenodo.org/records/20287681) | Avaliação futura de detecção/rastreamento sob oclusão e iluminação variável | Vídeo anotado de 1 hora e modelos publicados, mas o pacote total tem 199 GB, imagens olho de peixe e fluxo de referência orientado a CUDA. O repositório dos autores informa CC BY-NC-SA 4.0. |
+| [Cow Tracking by Classification](https://github.com/meiqing-wang/Cow-TrackingbyClassification) | Referência de arquitetura e, no [acervo ETH](https://www.research-collection.ethz.ch/entities/researchdata/fe7242ce-d8bc-4e56-92a6-8c7e312432b0), avaliação futura de rastreamento | Os GIFs locais já mostram predições; o acervo separado oferece seis vídeos de teste rotulados em `tracking.tar.gz` (7,88 GB). O modelo usa YOLOv8 e classificação de indivíduos, sem encaixe direto no adaptador YOLOX ONNX. A licença do acervo ETH permite uso não comercial. |
+| [MooTrack360](https://zenodo.org/records/20287681) | Avaliação futura de detecção/rastreamento e candidato para acessos virtuais | O pacote de plantas tem regiões `gate` e `milking_station` e configurações de câmeras. Há vídeo anotado de 1 hora e sequências amostrais; os arquivos de vídeo são grandes (11,5 GB e 18,9 GB), com imagem olho de peixe. O repositório dos autores informa CC BY-NC-SA 4.0. |
 
 ## Escopo da demonstração
 
 Um vídeo real processado com pesos YOLOX ONNX, saída anotada e `--run-report` comprova funcionamento técnico da leitura, inferência e gravação. O relatório operacional registra detecções e FPS, mas **não** comprova precisão de contagem, classificação de comportamento ou eventos de evasão. Para medir essas funcionalidades serão necessários vídeos com passagens/ocorrências anotadas e câmera semelhante à do projeto.
 
 Arquivos de mídia e pesos ficam em `datasets/`, `videos/` e `models/`, ignorados pelo Git. Registre hashes e URLs originais antes de reproduzir os resultados. Não publique cópia dos vídeos sem licença confirmada. O ajuste fino do detector fica para o próximo sprint após medir os erros no material real.
+
+## Potencial para as issues de acesso e rastreamento
+
+O pacote `Floorplans_and_extrinsic_calibration.zip` do MooTrack360 foi baixado e inspecionado localmente. Em `Farm2_Area_1`, a planta lista duas regiões `gate` e duas `milking_station`; em `Farm2_Area_2-3`, quatro portões e uma estação; em `Farm2_Area_4`, um portão e uma estação. O vídeo de 1 hora e os pacotes amostrais ainda precisam ser examinados para descobrir quais desses acessos aparecem em cada câmera e se há cruzamentos observáveis. As coordenadas publicadas estão na planta em metros; não devem ser copiadas diretamente para as linhas normalizadas da imagem.
+
+Os seis vídeos rotulados do Cow Tracking são candidatos diretos à avaliação de trocas de identidade e oclusões da issue #6. O artigo descreve bovinos saindo e voltando ao campo de visão; isso é diferente de uma entrada ou saída física de curral/ordenha. Para as issues #2 e #16, é preciso inspecionar a gravação e rotular acesso, instante e sentido antes de usar qualquer cruzamento. A resposta anterior de que as fontes não tinham vídeos relevantes foi ampla demais: a limitação correta é que **os vídeos completos com rótulos de acesso ainda não foram baixados nem examinados**.
 
 ## Ensaio executado em 14/11/2026
 
