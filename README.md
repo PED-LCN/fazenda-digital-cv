@@ -58,6 +58,8 @@ Se a captura da janela não estiver disponível no computador de apresentação,
 
 A fonte muda sem alterar o rastreamento, a contagem ou o contrato de eventos. O detector real espera um modelo **YOLOX ONNX com saída bruta** e classe bovino 19 no mapa COCO por padrão; `--class-id` e `--input-size` permitem ajustar outro modelo compatível. O pré-processamento segue a [demonstração oficial de YOLOX para ONNX Runtime](https://github.com/Megvii-BaseDetection/YOLOX/blob/main/demo/ONNXRuntime/onnx_inference.py). Nenhum peso está incluído. O identificador do detector registra parte do SHA-256 dos pesos usados. Antes da distribuição, registre também origem e licença dos pesos e dos dados. Trocar a entrada pela câmera não comprova a qualidade das detecções: serão necessários pesos licenciados, ajuste da linha, vídeo real anotado e medição em campo.
 
+Ao processar um arquivo com FPS válido, `--annotated` e `--preview` usam o FPS informado pelo próprio arquivo para manter a velocidade de reprodução. Para RTSP e fontes sem FPS válido, usam o valor de `--fps` (30 por padrão). O FPS de processamento medido em `--run-report` é separado da velocidade de reprodução.
+
 Para hardware mais limitado, comece com `--fps 5 --width 640 --height 360` na captura da janela e `--max-width 640` em vídeo ou RTSP; compare perda de passagens e latência antes de reduzir ainda mais. A prévia e a gravação anotada são opcionais.
 
 ## Contrato de saída
