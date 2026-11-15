@@ -1,8 +1,18 @@
 import csv
+from pathlib import Path
 
 import pytest
 
 from fazenda_cv.media_manifest import FIELDS, load_manifest
+
+
+def test_committed_real_media_catalog_has_separate_video_splits():
+    path = Path(__file__).resolve().parents[1] / "docs" / "MANIFESTO_MIDIAS_REAIS.csv"
+    records = load_manifest(path)
+    assert len(records) == 3
+    assert {record.media_type for record in records} == {"photo", "video"}
+    assert {record.split for record in records} == {"tuning", "evaluation"}
+    assert records[0].sha256 != records[-1].sha256
 
 
 def write_manifest(path, rows):
