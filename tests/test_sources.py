@@ -30,3 +30,47 @@ def test_output_fps_falls_back_without_file_metadata():
     assert _output_fps(source, 30) == 30
     source.fps = 10.0
     assert _output_fps(source, 30) == 10.0
+
+
+def test_selected_segment_preserves_original_offsets_and_output_speed(tmp_path):
+    video = tmp_path / "segment.avi"
+    writer = cv2.VideoWriter(str(video), cv2.VideoWriter_fourcc(*"MJPG"), 10, (64, 48))
+    assert writer.isOpened()
+    for _ in range(30):
+        writer.write(np.zeros((48, 64, 3), dtype=np.uint8))
+    writer.release()
+    source = OpenCVSource(str(video), start_seconds=1, duration_seconds=1, frame_step=2)
+    frames = list(source.frames())
+    assert [f.video_offset_ms for f in frames] == [1000, 1200, 1400, 1600, 1800]
+    assert _output_fps(source, 30) == 5
+
+
+def test_rtsp_rejects_file_sampling():
+    import pytest
+
+    with pytest.raises(ValueError, match="arquivo"):
+        OpenCVSource("rtsp://example.test/camera", frame_step=2)
+
+
+def test_invalid_segment_parameters():
+    import pytest
+
+    for kwargs in (
+        {"start_seconds": -1},
+        {"start_seconds": float("nan")},
+        {"duration_seconds": 0},
+        {"duration_seconds": float("inf")},
+        {"frame_step": 0},
+    ):
+        with pytest.raises(ValueError):
+            OpenCVSource("video.avi", **kwargs)
+
+
+def test_outbox_requires_access_id(capsys):
+    import pytest
+
+    from fazenda_cv.__main__ import main
+
+    with pytest.raises(SystemExit):
+        main(["--source", "video.avi", "--simulator", "--outbox", "queue.sqlite3"])
+    assert "access-id" in capsys.readouterr().err

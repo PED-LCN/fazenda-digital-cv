@@ -7,13 +7,16 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from math import isfinite
 from pathlib import Path
+from uuid import uuid4
 
 import cv2
 import numpy as np
 
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
+from fazenda_cv.integration_events import passage_to_integration_event
 from fazenda_cv.model_qualification import load_model_card
 from fazenda_cv.pipeline import CvPipeline
 from fazenda_cv.run_report import RunReport
@@ -25,6 +28,7 @@ from fazenda_cv.sources import (
     launch_godot,
 )
 from fazenda_cv.tiled_detection import TiledDetector
+from fazenda_cv.webhook import EventOutbox
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
     detector.add_argument("--model", help="Modelo bovino YOLOX em ONNX para vídeo real")
     detector.add_argument("--model-card", type=Path, help="Cartão TOML verificado do modelo YOLOX")
     parser.add_argument("--source-id", default="corredor-1")
+    parser.add_argument("--start-seconds", type=float, default=0)
+    parser.add_argument("--duration-seconds", type=float)
+    parser.add_argument("--frame-step", type=int, default=1)
+    parser.add_argument("--outbox", type=Path, help="Fila persistente de eventos v2")
+    parser.add_argument("--access-id", help="Acesso atribuído à linha de passagem")
     parser.add_argument(
         "--detection-only", action="store_true", help="Detecta e anota sem emitir passagens"
     )
@@ -198,13 +207,29 @@ def _gui_available() -> bool:
 
 def _output_fps(source: FrameSource, fallback_fps: int) -> float:
     if isinstance(source, OpenCVSource) and source.fps is not None:
-        return source.fps
+        return source.fps / source.frame_step
     return fallback_fps
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.outbox and not args.access_id:
+        parser.error("--outbox exige --access-id")
+    if (
+        not isfinite(args.start_seconds)
+        or args.start_seconds < 0
+        or args.frame_step < 1
+        or (
+            args.duration_seconds is not None
+            and (not isfinite(args.duration_seconds) or args.duration_seconds <= 0)
+        )
+    ):
+        parser.error("Trecho ou intervalo de quadros inválido")
+    if (args.start_seconds or args.duration_seconds is not None or args.frame_step != 1) and (
+        not args.source or args.source.lower().startswith(("rtsp://", "rtsps://"))
+    ):
+        parser.error("Seleção de trecho exige arquivo de vídeo")
     if args.draw_line and not _gui_available():
         parser.error("--draw-line requer OpenCV com GUI; instale opencv-python")
     if args.draw_line and args.detection_only:
@@ -257,6 +282,8 @@ def main(argv: list[str] | None = None) -> int:
         detector = TiledDetector(detector, args.tile_size, args.tile_overlap)
     pipeline = CvPipeline(detector, args.source_id, line, count_passages=not args.detection_only)
     report = RunReport(args.source_id, detector.model_version)
+    outbox = EventOutbox(args.outbox) if args.outbox else None
+    live_session = str(uuid4())
     game: subprocess.Popen[bytes] | None = None
     writer: cv2.VideoWriter | None = None
     preview: subprocess.Popen[bytes] | None = None
@@ -276,7 +303,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.window_id:
             source = X11WindowSource(args.window_id, args.width, args.height, args.fps)
         else:
-            source = OpenCVSource(args.source)
+            source = OpenCVSource(
+                args.source,
+                start_seconds=args.start_seconds,
+                duration_seconds=args.duration_seconds,
+                frame_step=args.frame_step,
+            )
         if args.events:
             args.events.parent.mkdir(parents=True, exist_ok=True)
             event_file = args.events.open("a", encoding="utf-8")
@@ -327,6 +359,11 @@ def main(argv: list[str] | None = None) -> int:
             report.record_frame(len(result.detections), len(result.events))
             frames += 1
             for event in result.events:
+                if outbox:
+                    wrapped = passage_to_integration_event(
+                        event, access_id=args.access_id, session_id=live_session
+                    )
+                    outbox.enqueue(wrapped.to_dict())
                 payload = json.dumps(event.to_dict(), ensure_ascii=False, separators=(",", ":"))
                 print(payload, flush=True)
                 if event_file:
@@ -394,7 +431,19 @@ def main(argv: list[str] | None = None) -> int:
         file=sys.stderr,
     )
     if args.run_report:
-        report.save(args.run_report, max(time.monotonic() - started, 0.001))
+        report.save(
+            args.run_report,
+            max(time.monotonic() - started, 0.001),
+            configuration={
+                "start_seconds": args.start_seconds,
+                "duration_seconds": args.duration_seconds,
+                "frame_step": args.frame_step,
+                "confidence_threshold": args.confidence_threshold,
+                "tile_size": args.tile_size,
+                "tile_overlap": args.tile_overlap,
+                "detection_only": args.detection_only,
+            },
+        )
     return 0
 
 

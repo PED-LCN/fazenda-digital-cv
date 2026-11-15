@@ -106,3 +106,6 @@ Para demonstrar o detector com gravação real e gerar um relatório de execuç�
 Para vídeos de alta resolução com bovinos pequenos, a inferência opcional por recortes e o ensaio MooTrack360 estão em [docs/INFERENCIA_RECORTES.md](docs/INFERENCIA_RECORTES.md).
 
 A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_REAL.md](docs/FONTES_VIDEO_REAL.md).
+
+Para a apresentação com vídeos reais, seleção de trechos e eventos persistidos
+para um receptor HTTP, consulte [docs/DEMONSTRACAO_VIDEO_REAL.md](docs/DEMONSTRACAO_VIDEO_REAL.md).

@@ -72,6 +72,7 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     for position in (None, None, 30, 38, 46, 54, 62, 70, 78, 86):
         writer.write(scene(position))
     writer.release()
+    outbox = tmp_path / "outbox.sqlite3"
     events_file = tmp_path / "eventos.jsonl"
     annotated = tmp_path / "demonstracao.avi"
     run_report = tmp_path / "execucao.json"
@@ -81,6 +82,10 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
             "--source",
             str(video),
             "--simulator",
+            "--outbox",
+            str(outbox),
+            "--access-id",
+            "curral",
             "--events",
             str(events_file),
             "--annotated",
@@ -96,6 +101,14 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     assert payloads[0]["time_basis"] == "replay"
     assert payloads[0]["video_offset_ms"] == 400
     assert payloads[0]["session_id"]
+    import sqlite3
+
+    with sqlite3.connect(outbox) as db:
+        queued = json.loads(db.execute("SELECT payload FROM outbox").fetchone()[0])
+    assert queued["schema_version"] == 2
+    assert queued["event_id"] == payloads[0]["event_id"]
+    assert queued["access_id"] == "curral"
+    assert queued["video_offset_ms"] == 400
     assert annotated.is_file()
     output = cv2.VideoCapture(str(annotated))
     assert output.get(cv2.CAP_PROP_FRAME_COUNT) == 10

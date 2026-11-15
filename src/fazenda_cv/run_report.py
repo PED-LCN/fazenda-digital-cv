@@ -26,7 +26,9 @@ class RunReport:
         self.max_cattle_in_frame = max(self.max_cattle_in_frame, cattle_count)
         self.passage_events += passage_count
 
-    def save(self, path: Path, elapsed_seconds: float) -> None:
+    def save(
+        self, path: Path, elapsed_seconds: float, *, configuration: dict[str, object] | None = None
+    ) -> None:
         if elapsed_seconds <= 0:
             raise ValueError("Tempo de execução inválido")
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,4 +43,6 @@ class RunReport:
             "processing_fps": round(self.frames / elapsed_seconds, 2),
             "validation_level": "operational_smoke_test",
         }
+        if configuration is not None:
+            payload["configuration"] = configuration
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

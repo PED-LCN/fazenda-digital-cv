@@ -49,3 +49,12 @@ def test_cli_rejects_model_card_with_wrong_hash(tmp_path):
         main(
             ["--source", str(tmp_path / "unused.avi"), "--model-card", str(tmp_path / "model.toml")]
         )
+
+
+def test_report_records_reproducible_configuration(tmp_path):
+    import json
+
+    report = RunReport("camera", "model")
+    path = tmp_path / "report.json"
+    report.save(path, 1, configuration={"start_seconds": 60, "frame_step": 20})
+    assert json.loads(path.read_text())["configuration"] == {"start_seconds": 60, "frame_step": 20}
