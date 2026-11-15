@@ -4,7 +4,7 @@ Use `--tile-size` e `--tile-overlap` quando os bovinos ocuparem poucos pixels no
 
 ```bash
 fazenda-cv \
-  --source datasets/mootrack360/farm1_area1_thread1.mp4 \
+  --source datasets/mootrack360/farm1_area1_thread1_partial.mp4 \
   --model models/yolox_tiny.onnx \
   --source-id mootrack360-farm1-area1-thread1 \
   --detection-only --max-width 0 \
