@@ -1,6 +1,11 @@
 import pytest
 
-from fazenda_cv.mot_data import aligned_mot_frames, read_mot_positions
+from fazenda_cv.mot_data import (
+    aligned_mot_frames,
+    read_mot_positions,
+    replay_mot_labels_as_detections,
+)
+from fazenda_cv.tracking import CentroidTracker
 from fazenda_cv.tracking_evaluation import score_tracks
 
 
@@ -52,3 +57,29 @@ def test_rejects_duplicate_id_and_invalid_range():
 def test_accepts_zero_based_cattle_id():
     frames = read_mot_positions(["1,0,0,0,2,2,1\n"])
     assert frames[1][0].object_id == 0
+
+
+def test_replay_measures_tracker_without_using_ground_truth_ids():
+    labels = read_mot_positions(
+        [
+            "1,90,0,0,2,2,1\n",
+            "1,17,20,0,2,2,1\n",
+            "2,90,20,0,2,2,1\n",
+            "2,17,0,0,2,2,1\n",
+        ]
+    )
+    tracker = CentroidTracker(max_distance=25)
+
+    frames = list(replay_mot_labels_as_detections(labels, tracker, first_frame=1, last_frame=3))
+
+    assert [item.object_id for item in frames[0][0]] == ["90", "17"]
+    assert [item.track_id for item in frames[0][1]] == [1, 2]
+    assert frames[2] == ([], [])
+    score = score_tracks(frames, max_distance=5)
+    assert score.identity_switches == 2
+    assert score.missed_positions == 0
+
+
+def test_replay_rejects_invalid_frame_interval():
+    with pytest.raises(ValueError, match="Intervalo"):
+        list(replay_mot_labels_as_detections({}, CentroidTracker(), first_frame=0, last_frame=1))

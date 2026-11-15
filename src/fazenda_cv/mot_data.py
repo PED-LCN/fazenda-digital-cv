@@ -8,7 +8,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from math import isfinite
 
-from fazenda_cv.domain import Track
+from fazenda_cv.domain import Detection, Track
+from fazenda_cv.tracking import CentroidTracker
 from fazenda_cv.tracking_evaluation import LabelledPosition
 
 
@@ -81,3 +82,27 @@ def aligned_mot_frames(
             for item in predictions.get(frame, [])
         ]
         yield labels, tracks
+
+
+def replay_mot_labels_as_detections(
+    ground_truth: dict[int, list[MotPosition]],
+    tracker: CentroidTracker,
+    *,
+    first_frame: int,
+    last_frame: int,
+) -> Iterable[tuple[list[LabelledPosition], list[Track]]]:
+    """Measure association alone by feeding labelled centers without their IDs.
+
+    This is an ideal-detection experiment, not a detector or end-to-end score.
+    Create a fresh tracker for each independent sequence or interval.
+    """
+    if first_frame < 1 or last_frame < first_frame:
+        raise ValueError("Intervalo de quadros inválido")
+    for frame in range(first_frame, last_frame + 1):
+        positions = ground_truth.get(frame, [])
+        labels = [LabelledPosition(str(item.object_id), item.center) for item in positions]
+        detections = [
+            Detection(item.center[0], item.center[1], item.center[0], item.center[1], 1.0, 19)
+            for item in positions
+        ]
+        yield labels, tracker.update(detections)
