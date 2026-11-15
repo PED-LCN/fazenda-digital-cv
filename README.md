@@ -95,3 +95,5 @@ As duas frentes planejadas para gravações reais, o protocolo de dados e as dep
 As histórias pequenas e os links das issues no GitHub estão em [docs/BACKLOG_GRAVACOES_REAIS.md](docs/BACKLOG_GRAVACOES_REAIS.md).
 
 O catálogo inicial de fotos e vídeos reais, com origem e hashes, está em [docs/CATALOGO_MIDIAS_REAIS.md](docs/CATALOGO_MIDIAS_REAIS.md).
+
+A calibração opcional dos limites do curral e regiões por câmera está descrita em [docs/AREAS_MONITORAMENTO.md](docs/AREAS_MONITORAMENTO.md).
