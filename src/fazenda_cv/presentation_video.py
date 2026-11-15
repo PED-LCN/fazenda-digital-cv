@@ -27,6 +27,10 @@ def export_presentation(source: Path, target: Path, *, fps: int = 30, width: int
         duration = count / source_fps
     finally:
         capture.release()
+    encoders = subprocess.check_output(["ffmpeg", "-hide_banner", "-encoders"], text=True)
+    encoder = "libx264" if "libx264" in encoders else "libopenh264"
+    if encoder not in encoders:
+        raise RuntimeError("FFmpeg exige encoder H.264 libx264 ou libopenh264")
     target.parent.mkdir(parents=True, exist_ok=True)
     filters = (
         f"scale={width}:-2,tpad=stop_mode=clone:stop_duration=2,"
@@ -48,7 +52,7 @@ def export_presentation(source: Path, target: Path, *, fps: int = 30, width: int
             filters,
             "-an",
             "-c:v",
-            "libopenh264",
+            encoder,
             "-b:v",
             "3M",
             "-pix_fmt",
