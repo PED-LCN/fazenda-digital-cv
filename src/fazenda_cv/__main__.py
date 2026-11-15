@@ -14,10 +14,12 @@ from uuid import uuid4
 import cv2
 import numpy as np
 
+from fazenda_cv.areas import annotate_areas, load_areas
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
 from fazenda_cv.integration_events import passage_to_integration_event
 from fazenda_cv.model_qualification import load_model_card
+from fazenda_cv.occupancy import measure_occupancy
 from fazenda_cv.pipeline import CvPipeline
 from fazenda_cv.run_report import RunReport
 from fazenda_cv.sources import (
@@ -45,6 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
     detector.add_argument("--model", help="Modelo bovino YOLOX em ONNX para vídeo real")
     detector.add_argument("--model-card", type=Path, help="Cartão TOML verificado do modelo YOLOX")
     parser.add_argument("--source-id", default="corredor-1")
+    parser.add_argument("--areas-config", type=Path)
+    parser.add_argument("--occupancy-events", type=Path)
     parser.add_argument("--start-seconds", type=float, default=0)
     parser.add_argument("--duration-seconds", type=float)
     parser.add_argument("--frame-step", type=int, default=1)
@@ -214,7 +218,9 @@ def _output_fps(source: FrameSource, fallback_fps: int) -> float:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.outbox and not args.access_id:
+    if args.occupancy_events and not args.areas_config:
+        parser.error("occupancy-events exige areas-config")
+    if args.outbox and not args.access_id and not args.detection_only:
         parser.error("--outbox exige --access-id")
     if (
         not isfinite(args.start_seconds)
@@ -280,6 +286,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.tile_size:
         detector = TiledDetector(detector, args.tile_size, args.tile_overlap)
+    area = None
+    if args.areas_config:
+        try:
+            area = load_areas(args.areas_config)[args.source_id]
+        except (OSError, ValueError, KeyError) as error:
+            parser.error(f"Áreas inválidas: {error}")
     pipeline = CvPipeline(detector, args.source_id, line, count_passages=not args.detection_only)
     report = RunReport(args.source_id, detector.model_version)
     outbox = EventOutbox(args.outbox) if args.outbox else None
@@ -288,10 +300,14 @@ def main(argv: list[str] | None = None) -> int:
     writer: cv2.VideoWriter | None = None
     preview: subprocess.Popen[bytes] | None = None
     event_file = None
+    occupancy_file = None
     frame_stream = None
     frames = 0
     started = time.monotonic()
     try:
+        if args.occupancy_events:
+            args.occupancy_events.parent.mkdir(parents=True, exist_ok=True)
+            occupancy_file = args.occupancy_events.open("w", encoding="utf-8")
         source: FrameSource
         if args.godot:
             game = launch_godot(args.godot)
@@ -356,6 +372,23 @@ def main(argv: list[str] | None = None) -> int:
                 video_offset_ms=sample.video_offset_ms,
                 time_basis=sample.time_basis,
             )
+            if area and (occupancy_file or outbox):
+                occupancy = measure_occupancy(
+                    result.detections,
+                    area,
+                    (frame.shape[1], frame.shape[0]),
+                    session_id=sample.session_id or live_session,
+                    occurred_at=sample.occurred_at,
+                    time_basis=sample.time_basis,
+                    video_offset_ms=sample.video_offset_ms,
+                )
+                for measurement in occupancy:
+                    payload_v2 = measurement.to_dict()
+                    if occupancy_file:
+                        occupancy_file.write(json.dumps(payload_v2) + "\n")
+                        occupancy_file.flush()
+                    if outbox:
+                        outbox.enqueue(payload_v2)
             report.record_frame(len(result.detections), len(result.events))
             frames += 1
             for event in result.events:
@@ -371,6 +404,8 @@ def main(argv: list[str] | None = None) -> int:
                     event_file.flush()
             if args.annotated or args.preview:
                 image = pipeline.annotate(frame, result)
+                if area:
+                    image = annotate_areas(image, area)
                 height, width = image.shape[:2]
                 output_fps = _output_fps(source, args.fps)
                 if args.annotated:
@@ -417,6 +452,8 @@ def main(argv: list[str] | None = None) -> int:
                 preview.wait(timeout=2)
             except subprocess.TimeoutExpired:
                 preview.kill()
+        if occupancy_file:
+            occupancy_file.close()
         if event_file:
             event_file.close()
         if game:
