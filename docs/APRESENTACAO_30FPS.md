@@ -11,3 +11,7 @@ O comando gera H.264/MP4 com interpolação de movimento pelo FFmpeg, preserva a
 A interpolação cria quadros visuais entre os quadros analisados. Não cria observações de bovinos nem altera JSON, fila ou métricas. A fonte do ensaio de um minuto foi amostrada a 2 FPS: 30 FPS exportados não significam captura ou detecção a 30 FPS. Interpolação pode distorcer caixas, textos ou animais durante oclusões; use o vídeo original para avaliar precisão. Os limites medidos de inferência estão em DETECTOR_CPU.md.
 
 Teste automatizado gera fonte sintética de dois segundos, exporta a 30 e 60 FPS, confere 60/120 quadros e preservação dos bytes originais, além da recusa de sobrescrita. Execute `PYTHONPATH=src .venv/bin/pytest -q tests/test_presentation_video.py`. Na apresentação real, confira duração, FPS e quadros com ffprobe e revise visualmente transições/rodapé.
+
+## Exemplo de alimentação concluído
+
+Foi gerado `../cv-monitoring/artifacts/alimentacao_yolox_s_30fps.mp4`: H.264, 30 FPS, 300 quadros e duração exata de 10 s conferidos com ffprobe. A inspeção do quadro 150 confirmou a caixa sobre o bovino e o rodapé de interpolação. O vídeo analítico `alimentacao_yolox_s.avi` mantém os 50 quadros originais de 5 FPS. Seu relatório `alimentacao_yolox_s.json` registra 49/50 quadros com detecção, 50 caixas, limiar 0,35 e 6,82 FPS de processamento durante a renderização de outra tarefa. Esses números são evidência operacional, sem caixas GT desse clipe.
