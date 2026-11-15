@@ -11,7 +11,11 @@ from pathlib import Path
 import cv2
 
 
-def export_presentation(source: Path, target: Path, *, fps: int = 30, width: int = 960) -> None:
+def export_presentation(
+    source: Path, target: Path, *, fps: int = 30, width: int = 960, interpolation: str = "motion"
+) -> None:
+    if interpolation not in {"motion", "blend"}:
+        raise ValueError("Interpolação deve ser motion ou blend")
     if fps not in {30, 60} or width < 64 or width % 2:
         raise ValueError("Use FPS 30/60 e largura par >= 64")
     if source.resolve() == target.resolve() or target.exists():
@@ -32,9 +36,14 @@ def export_presentation(source: Path, target: Path, *, fps: int = 30, width: int
     if encoder not in encoders:
         raise RuntimeError("FFmpeg exige encoder H.264 libx264 ou libopenh264")
     target.parent.mkdir(parents=True, exist_ok=True)
+    method = (
+        f"minterpolate=fps={fps}:mi_mode=blend"
+        if interpolation == "blend"
+        else f"minterpolate=fps={fps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir"
+    )
     filters = (
         f"scale={width}:-2,tpad=stop_mode=clone:stop_duration=2,"
-        f"minterpolate=fps={fps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir,"
+        f"{method},"
         f"trim=duration={duration},setpts=PTS-STARTPTS,"
         "drawtext=text='APRESENTACAO INTERPOLADA - deteccoes originais':"
         "x=10:y=h-28:fontsize=16:fontcolor=white:box=1:boxcolor=black@0.7"
@@ -71,8 +80,11 @@ def main() -> None:
     parser.add_argument("target", type=Path)
     parser.add_argument("--fps", type=int, choices=[30, 60], default=30)
     parser.add_argument("--width", type=int, default=960)
+    parser.add_argument("--interpolation", choices=["motion", "blend"], default="motion")
     args = parser.parse_args()
-    export_presentation(args.source, args.target, fps=args.fps, width=args.width)
+    export_presentation(
+        args.source, args.target, fps=args.fps, width=args.width, interpolation=args.interpolation
+    )
 
 
 if __name__ == "__main__":

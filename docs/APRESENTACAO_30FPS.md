@@ -15,3 +15,5 @@ Teste automatizado gera fonte sintética de dois segundos, exporta a 30 e 60 FPS
 ## Exemplo de alimentação concluído
 
 Foi gerado `../cv-monitoring/artifacts/alimentacao_yolox_s_30fps.mp4`: H.264, 30 FPS, 300 quadros e duração exata de 10 s conferidos com ffprobe. A inspeção do quadro 150 confirmou a caixa sobre o bovino e o rodapé de interpolação. O vídeo analítico `alimentacao_yolox_s.avi` mantém os 50 quadros originais de 5 FPS. Seu relatório `alimentacao_yolox_s.json` registra 49/50 quadros com detecção, 50 caixas, limiar 0,35 e 6,82 FPS de processamento durante a renderização de outra tarefa. Esses números são evidência operacional, sem caixas GT desse clipe.
+
+`--interpolation blend` oferece uma alternativa rápida por mistura dos quadros adjacentes, sem estimar movimento. Pode criar imagens sobrepostas; a opção padrão `motion` estima movimento e custa muito mais CPU. Ambas são testadas a 30/60 FPS. A versão rápida de um minuto foi gerada em `../cv-monitoring/artifacts/mootrack360_apresentacao_30fps_rapido.mp4`; o rodapé identifica a interpolação. As caixas continuam representando as observações originais, não detecções adicionais.
