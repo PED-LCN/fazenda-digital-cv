@@ -33,3 +33,5 @@ Em 15/11/2026, os primeiros quadros de `1hour_annotated_sequence.mp4` do MooTrac
 ```
 
 O trecho local parcial de 20.664.320 bytes tem SHA-256 `48848158e718dab535f1cf7b278d22c9aeb545b8beffc8c4ff8c0e5a14053a9b`. O ZIP TrackEval tem SHA-256 `26800ea3b6e653e4e9d7c54a2587060bd2a920b4e862f0b84afef624234b6478`. Com IoU 0,5 e YOLOX Tiny sem recortes, o resultado em 20 quadros foi **0 TP, 0 FP, 60 FN**, precisão 0 e revocação 0. O valor de precisão 0 indica ausência de predições, não falsos positivos. Esse resultado é um diagnóstico de incompatibilidade da escala dos bovinos com o quadro completo; não qualifica o modelo para uso no curral. O modo de recortes está na PR #29 e deve ser medido sobre o mesmo trecho.
+
+Um segundo trecho, quadros 101–120 do prefixo de 50 MB do mesmo MP4, foi mantido fora do ajuste inicial. Nele, o modo sem recortes também obteve **0 TP, 0 FP, 60 FN**. O resultado reforça que os pesos atuais não atendem esta vista de câmera. O prefixo é incompleto, porém esses 120 quadros decodificam; reproduza a avaliação no MP4 completo antes da aceitação final.
