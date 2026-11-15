@@ -17,9 +17,9 @@ Para um trecho de comparação, foram usados os quadros 50.000–50.299 em resol
 | SORT | 1 | 58 | 21 | 1 |
 | ByteTrack | 2 | 14 | 4 | 2 |
 
-Esses números são da métrica simples de correspondência por distância deste projeto. Não equivalem a HOTA, IDF1 nem às métricas oficiais do TrackEval, e o resultado muda com o limite de 80 pixels. A comparação comprova que o avaliador lê rótulos e saídas reais; **não mede o nosso `CentroidTracker`**. Para concluir a issue #6, execute o detector e o rastreador próprios sobre `1hour_annotated_sequence.mp4`, alinhe os quadros ao `gt.txt` e compare seus eventos e trocas de identidade. Esse MP4 de 18,9 GB não foi baixado. O ZIP de 11,5 GB em download é uma sequência amostral diferente e não pode ser usado com este ground truth sem correspondência demonstrada.
+Esses números são da métrica simples de correspondência por distância deste projeto. Não equivalem a HOTA, IDF1 nem às métricas oficiais do TrackEval, e o resultado muda com o limite de 80 pixels. A comparação comprova que o avaliador lê rótulos e saídas reais; **não mede o nosso `CentroidTracker`**. O início de `1hour_annotated_sequence.mp4` foi obtido em 15/11/2026; o vídeo completo de 18,9 GB ainda não foi baixado. O ZIP amostral de 11,5 GB é outra sequência e não pode ser usado com este ground truth.
 
-Há uma divergência nos metadados: `seqinfo.ini` declara 10 FPS, enquanto o cabeçalho do MP4 anotado declara `15000/1001` FPS (aproximadamente 14,99) e duração próxima de uma hora. Antes de converter o número do quadro em milissegundos, confirme a indexação e o FPS efetivo do vídeo. Os resultados acima usam somente números de quadro dos arquivos MOT, sem conversão temporal.
+Há divergências nos metadados: `seqinfo.ini` declara 10 FPS e 2944 × 2944, enquanto o MP4 informa `15000/1001` FPS (aproximadamente 14,99) e 2944 × 2944. As caixas MOT alinham aos bovinos do primeiro quadro quando suas coordenadas são multiplicadas por 2. Confirme escala e indexação em mais trechos antes de converter quadro em milissegundos. Os resultados MOT publicados acima usam somente números de quadro, sem conversão temporal.
 
 ## Ensaio do rastreador próprio com posições reais
 
@@ -35,3 +35,18 @@ O arquivo `gt.txt` também permite um ensaio controlado do `CentroidTracker`: a 
 Resultado local: 350.272 posições em 53.920 quadros; 0 posições perdidas, 0 trilhas extras, 0 trocas de ID e 0 fragmentos. O arquivo tem apenas 8 IDs únicos, com no máximo 8 bovinos por quadro. Entre posições consecutivas do mesmo ID, a mediana do deslocamento é 0 px/quadro, o percentil 90 é 1 px/quadro e o maior deslocamento é 13,34 px/quadro. Esse trecho é pouco exigente para associação por distância; **o resultado não autoriza substituir a avaliação com o detector e o vídeo originais**, nem sustenta 100% de precisão em ambiente real. Passagens, cruzamentos e oclusões ainda precisam de gravações específicas.
 
 Um ensaio separado de inferência no vídeo amostral fixo da mesma fonte encontrou 0 detecções em 20 quadros com YOLOX Tiny e quadro reduzido a 960 px. Em um quadro nativo de 2944 px, o detector também encontrou 0 bovinos na imagem inteira, mas encontrou 2 caixas ao dividir a imagem em 16 recortes de 736 px. Isso sugere investigar inferência por recortes para bovinos pequenos; as duas caixas ainda não foram comparadas com rótulos independentes. O vídeo amostral e o `gt.txt` pertencem a sequências diferentes.
+
+## Ensaio integral no trecho correspondente
+
+O script abaixo executa YOLOX Tiny com recortes e o `CentroidTracker` no início do MP4 correspondente ao `gt.txt`. Os IDs dos rótulos são usados somente na pontuação, não na inferência.
+
+```bash
+.venv/bin/python scripts/evaluate_real_tracker.py \
+  datasets/mootrack360/annotated_snapshot.mp4 \
+  datasets/mootrack360/mot/gt.txt \
+  models/yolox_tiny.onnx \
+  --first-frame 1 --last-frame 20 --coordinate-scale 2 \
+  --tile-size 736 --tile-overlap 96
+```
+
+Em 20 quadros, havia 60 posições rotuladas. O fluxo encontrou 11, perdeu 49, produziu 0 trilhas extras, 0 trocas de ID e 1 fragmento, com distância de correspondência de 80 px. A revocação de 18,3% mostra que a limitação dominante nesse trecho é a detecção; zero trocas de ID em apenas 11 correspondências não valida continuidade do rastreador. O trecho foi usado para ajustar a estratégia de recortes, não é avaliação independente. Ainda faltam passagens e oclusões suficientes para decidir sobre substituição do rastreador e impacto em alertas.

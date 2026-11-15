@@ -22,11 +22,17 @@ class MotPosition:
 
 
 def read_mot_positions(
-    lines: Iterable[str], *, first_frame: int = 1, last_frame: int | None = None
+    lines: Iterable[str],
+    *,
+    first_frame: int = 1,
+    last_frame: int | None = None,
+    coordinate_scale: float = 1.0,
 ) -> dict[int, list[MotPosition]]:
     """Read one-indexed MOT rows: frame, ID, x, y, width, height, confidence, ..."""
     if first_frame < 1 or (last_frame is not None and last_frame < first_frame):
         raise ValueError("Intervalo de quadros inválido")
+    if not isfinite(coordinate_scale) or coordinate_scale <= 0:
+        raise ValueError("coordinate_scale deve ser positivo")
     frames: dict[int, list[MotPosition]] = defaultdict(list)
     seen: set[tuple[int, int]] = set()
     for row_number, row in enumerate(csv.reader(lines), start=1):
@@ -57,7 +63,12 @@ def read_mot_positions(
         if confidence == 0:
             continue
         frames[frame].append(
-            MotPosition(frame, object_id, (x + width / 2, y + height / 2), confidence)
+            MotPosition(
+                frame,
+                object_id,
+                ((x + width / 2) * coordinate_scale, (y + height / 2) * coordinate_scale),
+                confidence,
+            )
         )
     return dict(frames)
 

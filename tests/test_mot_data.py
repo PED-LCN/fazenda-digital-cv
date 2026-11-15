@@ -59,6 +59,13 @@ def test_accepts_zero_based_cattle_id():
     assert frames[1][0].object_id == 0
 
 
+def test_scales_centers_for_decoded_video():
+    frames = read_mot_positions(["1,3,528,328,146,82,1\n"], coordinate_scale=2)
+    assert frames[1][0].center == (1202, 738)
+    with pytest.raises(ValueError, match="coordinate_scale"):
+        read_mot_positions([], coordinate_scale=0)
+
+
 def test_replay_measures_tracker_without_using_ground_truth_ids():
     labels = read_mot_positions(
         [
