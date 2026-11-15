@@ -74,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--class-id", type=int, default=19, help="Classe bovino no modelo ONNX")
     parser.add_argument("--input-size", type=int, default=416)
+    parser.add_argument("--cpu-threads", type=int, default=4)
     parser.add_argument(
         "--confidence-threshold",
         type=float,
@@ -240,6 +241,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--draw-line requer OpenCV com GUI; instale opencv-python")
     if args.draw_line and args.detection_only:
         parser.error("--draw-line não se aplica ao modo --detection-only")
+    if args.cpu_threads < 1:
+        parser.error("cpu-threads deve ser positivo")
     if args.fps < 1 or args.width < 16 or args.height < 16 or args.max_width < 0:
         parser.error("fps, largura e altura devem ser positivos")
     if args.max_frames < 0:
@@ -282,6 +285,7 @@ def main(argv: list[str] | None = None) -> int:
             args.input_size,
             args.class_id,
             confidence_threshold=args.confidence_threshold,
+            cpu_threads=args.cpu_threads,
         )
     )
     if args.tile_size:
@@ -476,6 +480,7 @@ def main(argv: list[str] | None = None) -> int:
                 "duration_seconds": args.duration_seconds,
                 "frame_step": args.frame_step,
                 "confidence_threshold": args.confidence_threshold,
+                "cpu_threads": args.cpu_threads,
                 "tile_size": args.tile_size,
                 "tile_overlap": args.tile_overlap,
                 "detection_only": args.detection_only,

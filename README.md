@@ -112,3 +112,6 @@ para um receptor HTTP, consulte [docs/DEMONSTRACAO_VIDEO_REAL.md](docs/DEMONSTRA
 
 A estimativa de ocupação por região, com eventos JSON v2, está em
 [docs/OCUPACAO.md](docs/OCUPACAO.md).
+
+A comparação YOLOX-S/Tiny e a configuração de threads de CPU estão em
+[docs/DETECTOR_CPU.md](docs/DETECTOR_CPU.md).

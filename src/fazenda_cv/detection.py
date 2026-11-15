@@ -70,13 +70,21 @@ class YoloXOnnxDetector:
         class_id: int = 19,
         confidence_threshold: float = 0.35,
         nms_threshold: float = 0.45,
+        cpu_threads: int = 4,
     ) -> None:
         import onnxruntime as ort
 
         with Path(model_path).open("rb") as weights:
             digest = hashlib.file_digest(weights, "sha256").hexdigest()
         self.model_version = f"yolox-onnx:sha256:{digest[:12]}"
-        self.session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+        if cpu_threads < 1:
+            raise ValueError("cpu_threads deve ser positivo")
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = cpu_threads
+        options.inter_op_num_threads = 1
+        self.session = ort.InferenceSession(
+            model_path, sess_options=options, providers=["CPUExecutionProvider"]
+        )
         self.input_name = self.session.get_inputs()[0].name
         self.input_size = input_size
         self.class_id = class_id
