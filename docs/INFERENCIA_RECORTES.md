@@ -28,3 +28,18 @@ Com o **mesmo quadro original de 2944 × 2944** e os mesmos 20 quadros do arquiv
 A inspeção visual do primeiro quadro anotado mostrou quatro caixas sobre bovinos visíveis, com outros bovinos sem caixa. Isso confirma que o modo de recortes melhora a cobertura operacional **nesta amostra**, mas não mede precisão ou revocação. O custo foi cerca de 10 vezes mais tempo por quadro nesta máquina. Não use esse resultado para declarar contagem de entrada/saída: o trecho não tem acesso calibrado, e o modo `--detection-only` emitiu zero passagens por desenho.
 
 Para aceitação quantitativa, anote caixas independentes em quadros separados dos usados para escolher tamanho/sobreposição, compare `score_frame` nos dois modos e meça FPS no hardware candidato. Calibre acesso/área somente após identificar a câmera e a geometria correspondente. O ZIP amostral não corresponde ao `gt.txt` da sequência anotada de uma hora.
+
+## Avaliação inicial com vídeo e rótulos correspondentes
+
+Foi obtido o início de `1hour_annotated_sequence.mp4`, que corresponde ao `gt.txt` do pacote TrackEval. Nas imagens de 2944 × 2944, as caixas MOT foram escaladas por 2, após inspeção visual do quadro 1; confira essa escala em mais quadros antes da avaliação final. O trecho local de 20.664.320 bytes tem SHA-256 `48848158e718dab535f1cf7b278d22c9aeb545b8beffc8c4ff8c0e5a14053a9b`.
+
+```bash
+.venv/bin/python scripts/evaluate_mot_detector.py \
+  datasets/mootrack360/annotated_snapshot.mp4 \
+  datasets/mootrack360/mot/gt.txt \
+  models/yolox_tiny.onnx \
+  --first-frame 1 --last-frame 20 --coordinate-scale 2 \
+  --tile-size 736 --tile-overlap 96
+```
+
+Com IoU 0,5, o modo de recortes obteve **11 TP, 0 FP, 49 FN** sobre 60 caixas rotuladas: precisão 1,0 e revocação 0,183. No mesmo trecho, o quadro inteiro teve 0 TP, 0 FP e 60 FN. O conjunto de 20 quadros é pequeno, sequencial e foi usado para escolher os recortes; por isso é diagnóstico de desenvolvimento, não conjunto de avaliação separado. A maioria dos bovinos rotulados continua sem detecção. O FPS no hardware candidato também permanece pendente.

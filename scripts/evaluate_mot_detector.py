@@ -10,6 +10,7 @@ from pathlib import Path
 from fazenda_cv.detection import YoloXOnnxDetector
 from fazenda_cv.mot_boxes import read_mot_boxes
 from fazenda_cv.mot_evaluation import score_mot_video
+from fazenda_cv.tiled_detection import TiledDetector
 
 
 def main() -> None:
@@ -21,7 +22,16 @@ def main() -> None:
     parser.add_argument("--last-frame", type=int, required=True)
     parser.add_argument("--coordinate-scale", type=float, required=True)
     parser.add_argument("--iou-threshold", type=float, default=0.5)
+    parser.add_argument("--tile-size", type=int, default=0)
+    parser.add_argument("--tile-overlap", type=int, default=0)
     args = parser.parse_args()
+    if (
+        args.tile_size < 0
+        or args.tile_overlap < 0
+        or (args.tile_size == 0 and args.tile_overlap)
+        or (args.tile_size and args.tile_overlap >= args.tile_size)
+    ):
+        parser.error("tile-size deve ser positivo e tile-overlap menor que tile-size")
 
     with args.ground_truth.open(encoding="utf-8") as source:
         labels = read_mot_boxes(
@@ -31,6 +41,8 @@ def main() -> None:
             last_frame=args.last_frame,
         )
     detector = YoloXOnnxDetector(str(args.model))
+    if args.tile_size:
+        detector = TiledDetector(detector, args.tile_size, args.tile_overlap)
     score = score_mot_video(
         args.video,
         detector,
