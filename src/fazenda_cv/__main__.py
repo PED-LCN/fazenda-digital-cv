@@ -87,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _open_writer(path: Path, width: int, height: int, fps: int) -> cv2.VideoWriter:
+def _open_writer(path: Path, width: int, height: int, fps: float) -> cv2.VideoWriter:
     path.parent.mkdir(parents=True, exist_ok=True)
     codec = "MJPG" if path.suffix.lower() == ".avi" else "mp4v"
     writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*codec), fps, (width, height))
@@ -96,7 +96,7 @@ def _open_writer(path: Path, width: int, height: int, fps: int) -> cv2.VideoWrit
     return writer
 
 
-def _open_preview(width: int, height: int, fps: int) -> subprocess.Popen[bytes]:
+def _open_preview(width: int, height: int, fps: float) -> subprocess.Popen[bytes]:
     if shutil.which("ffplay") is None:
         raise RuntimeError("ffplay não foi encontrado para a prévia")
     return subprocess.Popen(
@@ -174,6 +174,12 @@ def _gui_available() -> bool:
         line.strip().startswith("GUI:") and "NONE" in line
         for line in cv2.getBuildInformation().splitlines()
     )
+
+
+def _output_fps(source: FrameSource, fallback_fps: int) -> float:
+    if isinstance(source, OpenCVSource) and source.fps is not None:
+        return source.fps
+    return fallback_fps
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -273,13 +279,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.annotated or args.preview:
                 image = pipeline.annotate(frame, result)
                 height, width = image.shape[:2]
+                output_fps = _output_fps(source, args.fps)
                 if args.annotated:
                     if writer is None:
-                        writer = _open_writer(args.annotated, width, height, args.fps)
+                        writer = _open_writer(args.annotated, width, height, output_fps)
                     writer.write(image)
                 if args.preview:
                     if preview is None:
-                        preview = _open_preview(width, height, args.fps)
+                        preview = _open_preview(width, height, output_fps)
                     try:
                         assert preview.stdin is not None
                         preview.stdin.write(image.tobytes())
