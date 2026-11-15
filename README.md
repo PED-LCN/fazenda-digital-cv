@@ -96,4 +96,6 @@ O catálogo inicial de fotos e vídeos reais, com origem e hashes, está em [doc
 
 Para demonstrar o detector com gravação real e gerar um relatório de execução, veja [docs/QUALIFICACAO_MODELO.md](docs/QUALIFICACAO_MODELO.md).
 
+Para vídeos de alta resolução com bovinos pequenos, a inferência opcional por recortes e o ensaio MooTrack360 estão em [docs/INFERENCIA_RECORTES.md](docs/INFERENCIA_RECORTES.md).
+
 A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_REAL.md](docs/FONTES_VIDEO_REAL.md).

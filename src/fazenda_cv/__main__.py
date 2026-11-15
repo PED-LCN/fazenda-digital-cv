@@ -24,6 +24,7 @@ from fazenda_cv.sources import (
     find_x11_window,
     launch_godot,
 )
+from fazenda_cv.tiled_detection import TiledDetector
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,6 +61,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--class-id", type=int, default=19, help="Classe bovino no modelo ONNX")
     parser.add_argument("--input-size", type=int, default=416)
+    parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.35,
+        help="Confiança mínima da detecção ONNX (padrão: 0.35)",
+    )
+    parser.add_argument(
+        "--tile-size", type=int, default=0, help="Lado dos recortes em pixels; 0 desativa"
+    )
+    parser.add_argument(
+        "--tile-overlap", type=int, default=0, help="Sobreposição entre recortes em pixels"
+    )
     parser.add_argument(
         "--fps", type=int, default=30, help="FPS solicitado na captura de janela (padrão: 30)"
     )
@@ -194,6 +207,21 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("fps, largura e altura devem ser positivos")
     if args.max_frames < 0:
         parser.error("max-frames não pode ser negativo")
+    if not 0 < args.confidence_threshold <= 1:
+        parser.error("confidence-threshold deve estar entre 0 (exclusivo) e 1")
+    if args.simulator and args.confidence_threshold != 0.35:
+        parser.error("--confidence-threshold exige um modelo ONNX")
+    if (
+        args.tile_size < 0
+        or args.tile_overlap < 0
+        or (args.tile_size == 0 and args.tile_overlap)
+        or (args.tile_size and args.tile_overlap >= args.tile_size)
+    ):
+        parser.error("tile-size deve ser positivo e tile-overlap menor que tile-size")
+    if args.tile_size and args.simulator:
+        parser.error("--tile-size exige um modelo ONNX")
+    if args.tile_size and args.max_width:
+        parser.error("Use --max-width 0 com --tile-size para preservar a resolução")
     if args.simulator and args.source and args.source.lower().startswith(("rtsp://", "rtsps://")):
         parser.error("Use um modelo ONNX para câmera real; --simulator exige cena fixa Godot")
     if args.model and not Path(args.model).is_file():
@@ -212,8 +240,15 @@ def main(argv: list[str] | None = None) -> int:
     detector = (
         SimulatorCowDetector(tuple(args.roi))
         if args.simulator
-        else YoloXOnnxDetector(args.model, args.input_size, args.class_id)
+        else YoloXOnnxDetector(
+            args.model,
+            args.input_size,
+            args.class_id,
+            confidence_threshold=args.confidence_threshold,
+        )
     )
+    if args.tile_size:
+        detector = TiledDetector(detector, args.tile_size, args.tile_overlap)
     pipeline = CvPipeline(detector, args.source_id, line, count_passages=not args.detection_only)
     report = RunReport(args.source_id, detector.model_version)
     game: subprocess.Popen[bytes] | None = None
