@@ -115,3 +115,8 @@ A estimativa de ocupação por região, com eventos JSON v2, está em
 
 A comparação YOLOX-S/Tiny e a configuração de threads de CPU estão em
 [docs/DETECTOR_CPU.md](docs/DETECTOR_CPU.md).
+
+A bateria reproduzível de parâmetros, as definições de revocação e permanência,
+e o perfil que atingiu as metas locais de 60%/70% estão em
+[docs/BATERIA_DETECCAO.md](docs/BATERIA_DETECCAO.md). Os resultados medidos são
+restritos aos trechos declarados, sem homologação em campo.

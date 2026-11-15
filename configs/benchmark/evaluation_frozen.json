@@ -1,0 +1,25 @@
+{
+  "video": "datasets/mootrack360/annotated_prefix.mp4",
+  "labels": "datasets/mootrack360/mot/gt.txt",
+  "coordinate_scale": 2,
+  "phase": "held_out_evaluation",
+  "windows": [
+    [
+      121,
+      150
+    ]
+  ],
+  "configurations": [
+    {
+      "name": "tiny-512",
+      "model": "models/yolox_tiny.onnx",
+      "input_size": 416,
+      "tile_size": 512,
+      "overlap": 64,
+      "thresholds": [
+        0.05
+      ]
+    }
+  ],
+  "development_report_sha256": "1f9ee2744d83330ccbc132fa552d27bb79ca7c2330ff456d8ceaf0df54fea47f"
+}
