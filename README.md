@@ -109,3 +109,6 @@ A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_
 
 Para a apresentação com vídeos reais, seleção de trechos e eventos persistidos
 para um receptor HTTP, consulte [docs/DEMONSTRACAO_VIDEO_REAL.md](docs/DEMONSTRACAO_VIDEO_REAL.md).
+
+A estimativa de ocupação por região, com eventos JSON v2, está em
+[docs/OCUPACAO.md](docs/OCUPACAO.md).
