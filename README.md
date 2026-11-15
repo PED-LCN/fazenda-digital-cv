@@ -121,7 +121,7 @@ e o perfil que atingiu as metas locais de 60%/70% estão em
 [docs/BATERIA_DETECCAO.md](docs/BATERIA_DETECCAO.md). Os resultados medidos são
 restritos aos trechos declarados, sem homologação em campo.
 
-O ensaio na gravação local de 60 segundos, com 39 combinações de parâmetros,
+O ensaio na gravação local de 60 segundos, com 87 combinações de parâmetros e filtros,
 rótulos visuais provisórios e falsos positivos explicitados, está em
 [docs/BATERIA_60S.md](docs/BATERIA_60S.md). O documento também registra um snapshot
 com rótulos oficiais de mais de seis minutos do Cow Tracking; as metas de

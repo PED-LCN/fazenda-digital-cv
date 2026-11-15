@@ -50,6 +50,24 @@ consulte `tracks` no relatório. A baixa precisão e as duplicatas tornam o perf
 com confiança 0,03 inadequado para ativar contagem ou alertas sem revisão. Os
 parâmetros experimentais não alteram os padrões do aplicativo.
 
+## Refinamento de duplicatas
+
+Mais 48 combinações foram avaliadas sobre as propostas já calculadas: limiar,
+NMS de 0,25 a 0,50 e supressão opcional de fragmentos contidos em caixas maiores.
+O filtro foi escolhido nos quadros de ajuste; não houve alteração de rótulos nem
+do IoU mínimo de acerto. São 87 combinações no total.
+
+O candidato escolhido usou NMS 0,45, confiança 0,03 e desabilitou a remoção por
+contenção. Na reavaliação obteve 112 TP, 236 FP e 74 FN: revocação 60,22%, precisão
+32,18% e permanência amostrada 87/116 = 75,00%. Reduzir duplicatas não resolveu a
+qualidade. Estes valores são globais; não cumprem a meta por animal nem substituem
+referência humana ou teste contínuo. Quatro testes de supressão passaram.
+
+`refine_duplicates.py`, `dedup_development.json`, `dedup_frozen.json`,
+`dedup_regression.json` e `test_duplicate_refinement.py` ficam junto dos demais
+artefatos. O vídeo integral conserva as predições do candidato anterior à
+supressão adicional para permitir comparação reproduzível.
+
 ## Evidências e reprodução
 
 No checkout com os dados, `artifacts/battery60/` contém:
