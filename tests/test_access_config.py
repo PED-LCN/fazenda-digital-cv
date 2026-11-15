@@ -64,3 +64,34 @@ def test_annotation_draws_entry_direction(tmp_path):
     result = pipeline.process(frame)
     annotated = pipeline.annotate(frame, result)
     assert annotated[50, 70].any()
+
+
+def test_cli_selects_configured_access(tmp_path, monkeypatch):
+    from fazenda_cv import __main__ as cli
+
+    path = tmp_path / "accesses.json"
+    write_config(path, document())
+    configured = load_access_configs(path)["curral"]
+    captured = {}
+    original = cli.CvPipeline
+
+    def pipeline(detector, source_id, line, **kwargs):
+        captured.update(source_id=source_id, line=line)
+        return original(detector, source_id, line, **kwargs)
+
+    monkeypatch.setattr(cli, "CvPipeline", pipeline)
+    assert (
+        cli.main(
+            [
+                "--source",
+                str(tmp_path / "missing.avi"),
+                "--simulator",
+                "--accesses-config",
+                str(path),
+                "--access-id",
+                "curral",
+            ]
+        )
+        == 2
+    )
+    assert captured == {"source_id": configured.source_id, "line": configured.line}

@@ -109,3 +109,6 @@ A comparação dos conjuntos públicos considerados está em [docs/FONTES_VIDEO_
 
 Para a apresentação com vídeos reais, seleção de trechos e eventos persistidos
 para um receptor HTTP, consulte [docs/DEMONSTRACAO_VIDEO_REAL.md](docs/DEMONSTRACAO_VIDEO_REAL.md).
+
+Para selecionar a linha e fonte do curral ou ordenha, veja
+[docs/PASSAGENS_ACESSO.md](docs/PASSAGENS_ACESSO.md).

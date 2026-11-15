@@ -14,6 +14,7 @@ from uuid import uuid4
 import cv2
 import numpy as np
 
+from fazenda_cv.access_config import load_access_configs
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
 from fazenda_cv.domain import CountLine
 from fazenda_cv.integration_events import passage_to_integration_event
@@ -45,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     detector.add_argument("--model", help="Modelo bovino YOLOX em ONNX para vídeo real")
     detector.add_argument("--model-card", type=Path, help="Cartão TOML verificado do modelo YOLOX")
     parser.add_argument("--source-id", default="corredor-1")
+    parser.add_argument("--accesses-config", type=Path)
     parser.add_argument("--start-seconds", type=float, default=0)
     parser.add_argument("--duration-seconds", type=float)
     parser.add_argument("--frame-step", type=int, default=1)
@@ -214,6 +216,15 @@ def _output_fps(source: FrameSource, fallback_fps: int) -> float:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.accesses_config:
+        if not args.access_id or args.line is not None:
+            parser.error("accesses-config exige access-id e não permite line")
+        try:
+            access = load_access_configs(args.accesses_config)[args.access_id]
+        except (OSError, ValueError, KeyError) as error:
+            parser.error(f"Configuração de acesso inválida: {error}")
+        args.source_id = access.source_id
+        args.line = (*access.line.start, *access.line.end)
     if args.outbox and not args.access_id:
         parser.error("--outbox exige --access-id")
     if (
