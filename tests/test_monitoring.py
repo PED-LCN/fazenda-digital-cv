@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import cv2
 import numpy as np
+import pytest
 
 from fazenda_cv.__main__ import main
 from fazenda_cv.detection import SimulatorCowDetector, YoloXOnnxDetector
@@ -85,6 +86,7 @@ def test_video_file_to_cv_events_and_annotated_video(tmp_path, capsys) -> None:
     assert annotated.is_file()
     output = cv2.VideoCapture(str(annotated))
     assert output.get(cv2.CAP_PROP_FRAME_COUNT) == 10
+    assert output.get(cv2.CAP_PROP_FPS) == pytest.approx(10)
     output.release()
     assert "1 entradas" in capsys.readouterr().err
 

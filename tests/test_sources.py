@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+from fazenda_cv.__main__ import _output_fps
 from fazenda_cv.sources import OpenCVSource
 
 
@@ -12,11 +13,20 @@ def test_file_timeline_is_stable_across_replays(tmp_path):
         writer.write(np.zeros((48, 64, 3), dtype=np.uint8))
     writer.release()
 
-    first = list(OpenCVSource(str(video)).frames())
+    first_source = OpenCVSource(str(video))
+    first = list(first_source.frames())
     second = list(OpenCVSource(str(video)).frames())
 
+    assert first_source.fps == 10
     assert [frame.video_offset_ms for frame in first] == [0, 100, 200]
     assert [frame.video_offset_ms for frame in second] == [0, 100, 200]
     assert len({frame.session_id for frame in first}) == 1
     assert first[0].session_id != second[0].session_id
     assert all(frame.time_basis == "replay" for frame in first)
+
+
+def test_output_fps_falls_back_without_file_metadata():
+    source = OpenCVSource("recording.avi")
+    assert _output_fps(source, 30) == 30
+    source.fps = 10.0
+    assert _output_fps(source, 30) == 10.0

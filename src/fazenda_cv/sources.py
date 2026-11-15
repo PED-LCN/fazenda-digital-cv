@@ -7,6 +7,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from math import isfinite
 from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
@@ -34,6 +35,7 @@ class OpenCVSource:
     def __init__(self, location: str, reconnect_seconds: float = 2) -> None:
         self.location = location
         self.reconnect_seconds = reconnect_seconds
+        self.fps: float | None = None
 
     def frames(self) -> Iterator[CapturedFrame]:
         rtsp = self.location.lower().startswith(("rtsp://", "rtsps://"))
@@ -60,7 +62,12 @@ class OpenCVSource:
                     continue
                 raise OSError(f"Não foi possível abrir o vídeo: {self.location}")
             try:
-                fps = capture.get(cv2.CAP_PROP_FPS)
+                reported_fps = capture.get(cv2.CAP_PROP_FPS)
+                self.fps = (
+                    reported_fps
+                    if not rtsp and isfinite(reported_fps) and reported_fps > 0
+                    else None
+                )
                 started_at = datetime.now(UTC)
                 frame_index = 0
                 while True:
@@ -69,12 +76,10 @@ class OpenCVSource:
                         break
                     moment = (
                         datetime.now(UTC)
-                        if rtsp or not fps or fps <= 0
-                        else started_at + timedelta(seconds=frame_index / fps)
+                        if self.fps is None
+                        else started_at + timedelta(seconds=frame_index / self.fps)
                     )
-                    offset_ms = (
-                        None if rtsp or not fps or fps <= 0 else round(frame_index * 1000 / fps)
-                    )
+                    offset_ms = None if self.fps is None else round(frame_index * 1000 / self.fps)
                     yield CapturedFrame(
                         frame, moment, session_id, offset_ms, "live" if rtsp else "replay"
                     )
