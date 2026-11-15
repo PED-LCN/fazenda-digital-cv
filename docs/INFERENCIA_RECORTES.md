@@ -43,3 +43,5 @@ Foi obtido o início de `1hour_annotated_sequence.mp4`, que corresponde ao `gt.t
 ```
 
 Com IoU 0,5, o modo de recortes obteve **11 TP, 0 FP, 49 FN** sobre 60 caixas rotuladas: precisão 1,0 e revocação 0,183. No mesmo trecho, o quadro inteiro teve 0 TP, 0 FP e 60 FN. O conjunto de 20 quadros é pequeno, sequencial e foi usado para escolher os recortes; por isso é diagnóstico de desenvolvimento, não conjunto de avaliação separado. A maioria dos bovinos rotulados continua sem detecção. O FPS no hardware candidato também permanece pendente.
+
+Nos quadros 101–120, que não foram usados no ajuste inicial dos recortes, ambos os modos obtiveram **0 TP, 0 FP, 60 FN** com a mesma escala e IoU. A revocação do modo de recortes nesse trecho foi 0. Assim, os recortes ainda não resolvem a limitação do YOLOX Tiny nesta câmera. É preciso avaliar um detector apropriado ou ajuste de pesos no próximo sprint antes de prometer monitoramento confiável.
