@@ -112,3 +112,6 @@ para um receptor HTTP, consulte [docs/DEMONSTRACAO_VIDEO_REAL.md](docs/DEMONSTRA
 
 Para selecionar a linha e fonte do curral ou ordenha, veja
 [docs/PASSAGENS_ACESSO.md](docs/PASSAGENS_ACESSO.md).
+
+A consulta de entradas e saídas por acesso, fonte e sessão está em
+[docs/TOTAIS_ACESSO.md](docs/TOTAIS_ACESSO.md).
