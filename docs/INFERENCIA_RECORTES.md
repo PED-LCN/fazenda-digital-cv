@@ -71,3 +71,21 @@ O limiar de confiança agora pode ser informado em `--confidence-threshold` no C
 ```
 
 O limiar 0,10 aumenta a revocação nesta amostra, mas gera 12 falsos positivos em 15 quadros. O limiar 0,20 ainda deixa 27 de 45 bovinos sem caixa. Nenhum dos dois fica aprovado para operação; é preciso outro vídeo reservado para escolha final e teste de duração maior.
+
+## Reprodução de um minuto em gravação real
+
+O vídeo amostral parcial de Farm1 Area1 forneceu 1.149 quadros decodificáveis a 10 FPS (114,9 s). Foram selecionados os primeiros 600 quadros e mantido um a cada cinco, produzindo um clipe local de **120 quadros, 2 FPS e 60 segundos**, com SHA-256 `0c6ef452302812ba91f341a446a4853c8652e3fee563f71735f82a01b71adaa4`. A amostragem preserva o período de observação, mas deixa de fora movimentos entre quadros; não serve para validar passagens ou rastreamento.
+
+```bash
+fazenda-cv \
+  --source datasets/mootrack360/farm1_area1_60s_2fps.mp4 \
+  --model models/yolox_tiny.onnx \
+  --source-id mootrack360-farm1-area1-60s \
+  --detection-only --max-width 0 \
+  --tile-size 512 --tile-overlap 64 --confidence-threshold 0.2 \
+  --fps 2 --max-frames 120 \
+  --run-report artifacts/mootrack360_60s_tiled_report.json \
+  --annotated artifacts/mootrack360_60s_tiled.avi
+```
+
+O vídeo anotado foi conferido com `ffprobe`: 120 quadros, 2 FPS, 2944 × 2944 e **60,0 segundos**. O relatório registrou 120/120 quadros com alguma detecção, 1.368 caixas no total, máximo de 20 em um quadro, nenhum evento de passagem e **0,5 FPS de processamento** neste computador. O valor de 1.368 inclui possíveis duplicatas e falsos positivos, e o vídeo amostral não tem caixas de referência correspondentes. A execução comprova a continuidade da leitura e da gravação por um minuto; não comprova qualidade das detecções. O tempo de processamento é incompatível com análise ao vivo a 2 FPS neste hardware.
