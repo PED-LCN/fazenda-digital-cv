@@ -50,3 +50,5 @@ O script abaixo executa YOLOX Tiny com recortes e o `CentroidTracker` no início
 ```
 
 Em 20 quadros, havia 60 posições rotuladas. O fluxo encontrou 11, perdeu 49, produziu 0 trilhas extras, 0 trocas de ID e 1 fragmento, com distância de correspondência de 80 px. A revocação de 18,3% mostra que a limitação dominante nesse trecho é a detecção; zero trocas de ID em apenas 11 correspondências não valida continuidade do rastreador. O trecho foi usado para ajustar a estratégia de recortes, não é avaliação independente. Ainda faltam passagens e oclusões suficientes para decidir sobre substituição do rastreador e impacto em alertas.
+
+Nos quadros 101–120, separados do ajuste inicial, o mesmo fluxo perdeu as 60 posições rotuladas, sem produzir trilhas. A revocação foi 0. Esse resultado impede qualquer conclusão favorável sobre continuidade: primeiro é necessário melhorar a detecção nesta câmera, então repetir a avaliação de identidade e dos eventos.
