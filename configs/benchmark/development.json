@@ -1,0 +1,74 @@
+{
+  "video": "datasets/mootrack360/annotated_prefix.mp4",
+  "labels": "datasets/mootrack360/mot/gt.txt",
+  "coordinate_scale": 2,
+  "phase": "development",
+  "windows": [
+    [
+      1,
+      5
+    ],
+    [
+      51,
+      55
+    ],
+    [
+      101,
+      105
+    ]
+  ],
+  "configurations": [
+    {
+      "name": "tiny-512",
+      "model": "models/yolox_tiny.onnx",
+      "input_size": 416,
+      "tile_size": 512,
+      "overlap": 64,
+      "thresholds": [
+        0.35,
+        0.2,
+        0.1,
+        0.05
+      ]
+    },
+    {
+      "name": "s-512",
+      "model": "models/yolox_s.onnx",
+      "input_size": 640,
+      "tile_size": 512,
+      "overlap": 64,
+      "thresholds": [
+        0.35,
+        0.2,
+        0.1,
+        0.05
+      ]
+    },
+    {
+      "name": "s-640",
+      "model": "models/yolox_s.onnx",
+      "input_size": 640,
+      "tile_size": 640,
+      "overlap": 96,
+      "thresholds": [
+        0.35,
+        0.2,
+        0.1,
+        0.05
+      ]
+    },
+    {
+      "name": "s-736",
+      "model": "models/yolox_s.onnx",
+      "input_size": 640,
+      "tile_size": 736,
+      "overlap": 96,
+      "thresholds": [
+        0.35,
+        0.2,
+        0.1,
+        0.05
+      ]
+    }
+  ]
+}
