@@ -124,3 +124,6 @@ restritos aos trechos declarados, sem homologação em campo.
 A avaliação contínua diurna/noturna de pelo menos 30 minutos, com download,
 checkpoints e métricas por minuto/animal, está em
 [docs/AVALIACAO_30_MINUTOS.md](docs/AVALIACAO_30_MINUTOS.md).
+
+Para comparar YOLOX, YOLOv8n e RT-DETR nas mesmas janelas e avaliar um perfil
+congelado, consulte [docs/COMPARACAO_DETECTORES.md](docs/COMPARACAO_DETECTORES.md).
