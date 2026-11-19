@@ -1,0 +1,97 @@
+{
+  "profiles": [
+    {
+      "id": "yolox-tiny-full",
+      "backend": "yolox",
+      "input_size": 416,
+      "source_url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/tag/0.1.1rc0",
+      "license": "Checkpoint oficial para comparação local; licença específica dos pesos não confirmada",
+      "expected_sha256": "427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7",
+      "path": "../../../cv-monitoring/models/yolox_tiny.onnx",
+      "confidence": 0.2,
+      "cpu_threads": 4,
+      "tile_size": 0,
+      "overlap": 0
+    },
+    {
+      "id": "yolox-s-full",
+      "backend": "yolox",
+      "input_size": 640,
+      "source_url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/tag/0.1.1rc0",
+      "license": "Checkpoint oficial para comparação local; licença específica dos pesos não confirmada",
+      "expected_sha256": "c5c2d13e59ae883e6af3b45daea64af4833a4951c92d116ec270d9ddbe998063",
+      "path": "../../../cv-monitoring/models/yolox_s.onnx",
+      "confidence": 0.2,
+      "cpu_threads": 4,
+      "tile_size": 0,
+      "overlap": 0
+    },
+    {
+      "id": "yolox-s-tiles",
+      "backend": "yolox",
+      "input_size": 640,
+      "source_url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/tag/0.1.1rc0",
+      "license": "Checkpoint oficial para comparação local; licença específica dos pesos não confirmada",
+      "expected_sha256": "c5c2d13e59ae883e6af3b45daea64af4833a4951c92d116ec270d9ddbe998063",
+      "path": "../../../cv-monitoring/models/yolox_s.onnx",
+      "confidence": 0.2,
+      "cpu_threads": 4,
+      "tile_size": 1280,
+      "overlap": 128
+    },
+    {
+      "id": "yolov8n-eth-full",
+      "backend": "yolov8",
+      "input_size": 640,
+      "source_url": "https://drive.google.com/file/d/1W6n8YVCEEZarq6a9qFCKLLhWhp_xeU19/view",
+      "license": "Publicado pelos autores para reprodução; licença específica do checkpoint não declarada. Pesquisa local sem redistribuição.",
+      "expected_sha256": "2c10284429fa03ad9222a4dec8bcb2a0c9472593eb0b76c9d5545dbc3fe13f71",
+      "optional": true,
+      "path": "../../../cv-monitoring/models/yolov8n_best.pt",
+      "confidence": 0.2,
+      "cpu_threads": 4,
+      "tile_size": 0,
+      "overlap": 0
+    },
+    {
+      "id": "yolov8n-eth-tiles",
+      "backend": "yolov8",
+      "input_size": 640,
+      "source_url": "https://drive.google.com/file/d/1W6n8YVCEEZarq6a9qFCKLLhWhp_xeU19/view",
+      "license": "Publicado pelos autores para reprodução; licença específica do checkpoint não declarada. Pesquisa local sem redistribuição.",
+      "expected_sha256": "2c10284429fa03ad9222a4dec8bcb2a0c9472593eb0b76c9d5545dbc3fe13f71",
+      "optional": true,
+      "path": "../../../cv-monitoring/models/yolov8n_best.pt",
+      "confidence": 0.2,
+      "cpu_threads": 4,
+      "tile_size": 1280,
+      "overlap": 128
+    },
+    {
+      "id": "rtdetr-r50-full",
+      "backend": "rtdetr",
+      "input_size": 640,
+      "source_url": "https://huggingface.co/PekingU/rtdetr_r50vd/tree/df939e661d8c52e80608d1ec566561aabd25a4e7",
+      "license": "Apache-2.0",
+      "expected_sha256": "5263d5521eff3e356f6cd8a371fd5dfb891725beda5f713674f79669115cdc64",
+      "path": "../../../cv-monitoring/models/rtdetr_r50vd",
+      "confidence": 0.2,
+      "cpu_threads": 4,
+      "tile_size": 0,
+      "overlap": 0
+    },
+    {
+      "id": "rtdetr-r50-tiles",
+      "backend": "rtdetr",
+      "input_size": 640,
+      "source_url": "https://huggingface.co/PekingU/rtdetr_r50vd/tree/df939e661d8c52e80608d1ec566561aabd25a4e7",
+      "license": "Apache-2.0",
+      "expected_sha256": "5263d5521eff3e356f6cd8a371fd5dfb891725beda5f713674f79669115cdc64",
+      "path": "../../../cv-monitoring/models/rtdetr_r50vd",
+      "confidence": 0.2,
+      "cpu_threads": 4,
+      "tile_size": 1280,
+      "overlap": 128
+    }
+  ]
+}
